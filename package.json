@@ -1,20 +1,34 @@
 {
-  "name": "praisehk_lite_symptom_analyzer",
-  "version": "0.1.0",
+  "name": "hk.ust.ienv.praisehk_lite_symptom_analyzer",
+  "version": "1.0.0",
   "private": true,
   "dependencies": {
+    "@date-io/date-fns": "^1.3.13",
+    "@material-ui/core": "^4.10.2",
+    "@material-ui/icons": "^4.9.1",
+    "@material-ui/lab": "^4.0.0-alpha.56",
+    "@material-ui/pickers": "^3.2.10",
     "@testing-library/jest-dom": "^4.2.4",
     "@testing-library/react": "^9.5.0",
     "@testing-library/user-event": "^7.2.1",
+    "cordova-android": "^8.1.0",
+    "cordova-browser": "^6.0.0",
+    "cordova-ios": "^5.1.1",
+    "cordova-plugin-whitelist": "^1.3.4",
+    "cordova_script": "0.0.2",
+    "date-fns": "^2.14.0",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
-    "react-scripts": "3.4.1"
+    "react-router-dom": "^5.2.0",
+    "react-scripts": "3.4.1",
+    "react.cordova-navigation_controller": "^1.8.0"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "start": "reco serve",
+    "build": "reco checkversion && react-scripts build && reco copy && cordova build",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "eject": "react-scripts eject",
+    "reactstart": "react-scripts start"
   },
   "eslintConfig": {
     "extends": "react-app"
@@ -30,5 +44,27 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "homepage": "./",
+  "displayName": "praisehk_lite_symptom_analyzer",
+  "description": "A sample Apache Cordova application that responds to the deviceready event.",
+  "main": "index.js",
+  "keywords": [
+    "ecosystem:cordova"
+  ],
+  "author": "DataCyber-OrChuban, react.cordova: Apache Cordova Team and React.js",
+  "license": "Apache-2.0",
+  "cordova": {
+    "plugins": {
+      "cordova-plugin-whitelist": {}
+    },
+    "platforms": [
+      "android",
+      "ios",
+      "browser"
+    ]
+  },
+  "devDependencies": {
+    "@svgr/webpack": "^5.4.0"
   }
 }
