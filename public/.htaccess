@@ -1,0 +1,12 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine on
+  # rewriteBase:browser-dev
+  # RewriteBase /~praise/praiseHK-lite_symptom-analyzer/dev/
+  # rewriteBase:browser-prod
+  RewriteBase /~praise/praiseHK-lite_symptom-analyzer/prod/
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_FILENAME} !-l
+  RewriteRule ^ index.html [QSA,L]
+</IfModule>

@@ -14,9 +14,11 @@
     "cordova-android": "^8.1.0",
     "cordova-browser": "^6.0.0",
     "cordova-ios": "^5.1.1",
+    "cordova-plugin-geolocation": "^4.0.2",
     "cordova-plugin-whitelist": "^1.3.4",
     "cordova_script": "0.0.2",
     "date-fns": "^2.14.0",
+    "jquery": "^3.5.1",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
     "react-router-dom": "^5.2.0",
@@ -28,7 +30,8 @@
     "build": "reco checkversion && react-scripts build && reco copy && cordova build",
     "test": "echo \"Error: no test specified\" && exit 1",
     "eject": "react-scripts eject",
-    "reactstart": "react-scripts start"
+    "reactstart": "react-scripts start",
+    "btc": "react-scripts build && reco copy"
   },
   "eslintConfig": {
     "extends": "react-app"
@@ -45,9 +48,14 @@
       "last 1 safari version"
     ]
   },
-  "homepage": "./",
+  "homepage-dev": ".",
+  "homepage-android": "/android_asset/www",
+  "homepage-ios": ".",
+  "homepage-browser-dev": "/~praise/praiseHK-lite_symptom-analyzer/dev",
+  "homepage-browser-prod": "/~praise/praiseHK-lite_symptom-analyzer/prod",
+  "homepage": ".",
   "displayName": "praisehk_lite_symptom_analyzer",
-  "description": "A sample Apache Cordova application that responds to the deviceready event.",
+  "description": "An application that analysis relationship between certain symptoms and pollutants.",
   "main": "index.js",
   "keywords": [
     "ecosystem:cordova"
@@ -56,7 +64,8 @@
   "license": "Apache-2.0",
   "cordova": {
     "plugins": {
-      "cordova-plugin-whitelist": {}
+      "cordova-plugin-whitelist": {},
+      "cordova-plugin-geolocation": {}
     },
     "platforms": [
       "android",

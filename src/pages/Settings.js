@@ -7,7 +7,7 @@ import Switch from "@material-ui/core/Switch";
 
 export default function Settings() {
     return (
-        <>
+        <div className='page'>
             <Typography variant='h6' color='primary'>Settings</Typography>
             <br/>
             <div style={{textAlign:'left'}}>
@@ -40,6 +40,6 @@ export default function Settings() {
                 <Divider/>
             </div>
 
-        </>
+        </div>
     );
 }

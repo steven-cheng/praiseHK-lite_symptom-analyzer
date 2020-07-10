@@ -9,6 +9,9 @@
   "installed_plugins": {
     "cordova-plugin-whitelist": {
       "PACKAGE_NAME": "hk.ust.ienv.praisehk_lite_symptom_analyzer"
+    },
+    "cordova-plugin-geolocation": {
+      "PACKAGE_NAME": "hk.ust.ienv.praisehk_lite_symptom_analyzer"
     }
   },
   "dependent_plugins": {}

@@ -16,6 +16,7 @@ import graphSample from '../img/graphSample.png';
 import Divider from "@material-ui/core/Divider";
 import Card from "@material-ui/core/Card";
 import CardContent from "@material-ui/core/CardContent";
+import Container from "@material-ui/core/Container";
 
 
 export default function Chart() {
@@ -28,7 +29,7 @@ export default function Chart() {
     };
 
     return (
-        <>
+        <div className='page'>
             <div style={{textAlign:'center', marginTop:'15px'}}>
                 <TextField
                     value='15Apr - 22Apr'
@@ -54,38 +55,37 @@ export default function Chart() {
                     <MenuItem value={'Redness of eyes'}>Redness of eyes</MenuItem>
                 </Select>
             </div>
-            <div style={{textAlign:'center', marginTop:'15px'}}>
-                <div style={{display:'inline-block', position:'relative'}}>
-                    <img src={graphSample} />
-                    <div style={{position:'absolute', top:30, left:307}}>
-                        <ButtonGroup
-                            orientation="vertical"
-                            color="primary"
-                            size='small'
-                        >
-                            <Button>AQHI</Button>
-                            <Button>NO2</Button>
-                            <Button variant='contained'>SO2</Button>
-                            <Button>O3</Button>
-                            <Button>PM2.5</Button>
-                            <Button>PM10</Button>
-                        </ButtonGroup>
-                    </div>
+            <Container style={{marginTop:'15px'}}>
+                <div style={{display:'flex', justifyContent:'center', alignItems:'center'}}>
+                    <img style={{flex:'none'}} src={graphSample} />
+                    <ButtonGroup style={{flex:'none'}}
+                        orientation="vertical"
+                        color="primary"
+                        size='small'
+                    >
+                        <Button>AQHI</Button>
+                        <Button>%AR</Button>
+                        <Button>NO2</Button>
+                        <Button variant='contained'>SO2</Button>
+                        <Button>O3</Button>
+                        <Button>PM2.5</Button>
+                        <Button>PM10</Button>
+                    </ButtonGroup>
                 </div>
                 <p>Entry: Wheezing</p>
-                <Card style={{maxWidth:300, marginLeft:'auto', marginRight:'auto'}}>
+                <Card style={{maxWidth:250, marginLeft:'auto', marginRight:'auto'}}>
                     <CardContent>
-                        AQHI &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; r<sup>2</sup>=0.2814
-                        <Divider/>
-                        NO2 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; r<sup>2</sup>=0.2814
-                        <Divider/>
-                        SO2 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; r<sup>2</sup>=0.2814
-                        <Divider/>
-                        O3 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; r<sup>2</sup>=0.2814
-                        <Divider/>
-                        PM2.5 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; r<sup>2</sup>=0.2814
-                        <Divider/>
-                        PM10 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; r<sup>2</sup>=0.2814
+                        <div style={{float:'left'}}>AQHI</div> <div style={{float:'right'}}>r<sup>2</sup>=0.2814</div>
+                        <Divider style={{clear:'both'}}/>
+                        <div style={{float:'left'}}>NO2</div> <div style={{float:'right'}}>r<sup>2</sup>=0.2814</div>
+                        <Divider style={{clear:'both'}}/>
+                        <div style={{float:'left'}}>SO2</div> <div style={{float:'right'}}>r<sup>2</sup>=0.2814</div>
+                        <Divider style={{clear:'both'}}/>
+                        <div style={{float:'left'}}>O3</div> <div style={{float:'right'}}>r<sup>2</sup>=0.2814</div>
+                        <Divider style={{clear:'both'}}/>
+                        <div style={{float:'left'}}>PM2.5</div> <div style={{float:'right'}}>r<sup>2</sup>=0.2814</div>
+                        <Divider style={{clear:'both'}}/>
+                        <div style={{float:'left'}}>PM10</div> <div style={{float:'right'}}>r<sup>2</sup>=0.2814</div>
                     </CardContent>
                 </Card>
                 <br/><br/>
@@ -93,7 +93,7 @@ export default function Chart() {
                 <Typography variant='body1' style={{textAlign:'left'}}>
                     Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
                 </Typography>
-            </div>
+            </Container>
             <Dialog open={isOpenDatePickerDialog} onClose={()=>{setIsOpenDatePickerDialog(false)}}>
                 <DialogTitle>From</DialogTitle>
                 <DialogContent>
@@ -117,6 +117,6 @@ export default function Chart() {
                     </Button>
                 </DialogActions>
             </Dialog>
-        </>
+        </div>
     );
 }
