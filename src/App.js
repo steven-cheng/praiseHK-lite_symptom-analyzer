@@ -10,7 +10,7 @@ import BarChartIcon from '@material-ui/icons/BarChart';
 import SettingsIcon from '@material-ui/icons/Settings';
 import HomeIcon from '@material-ui/icons/Home';
 import './App.css';
-import Home from "./pages/Home";
+import Home from './pages/Home'
 import Settings from "./pages/Settings";
 import Chart from "./pages/Chart";
 import saveButton from './img/save.svg';
@@ -95,7 +95,7 @@ export default function App() {
       /* Create indices for "symptoms_types" object store */
       objectStore1.createIndex("symptom_type_name", 'name', { unique: true });
       // Add default symptom type name to the object store
-      let default_symptom_types = ['Wheezing','Phlegm', 'Shortness of breath', 'Chest tightness', 'Itchy eyes', 'Redness of eyes'];
+      let default_symptom_types = ['Redness of eyes', 'Itchy eyes', 'Chest tightness', 'Shortness of breath', 'Phlegm','Wheezing'];
       objectStore1.transaction.oncomplete = (event) => {
         let objectStore = db.transaction('symptom_types', 'readwrite').objectStore('symptom_types');
         default_symptom_types.forEach( (symptomType) => {
@@ -129,7 +129,6 @@ export default function App() {
   } else if(toPage!=='' && toPage!==currentPath.substring(1)) {
     return <Redirect to={'/'+toPage} />
   } else {
-    console.log('currentPath:', currentPath);
     return (
         <>
           <Loader isLoading={isLoading} />

@@ -19,12 +19,12 @@ import usePrevious from "../components/usePrevious";
 
 
 export default function Home(props) {
-    const [isOpenAddNewSymptomType_dialog, set_isOpenAddNewSymptomType_dialog] = useState(false);
-    const [duplicateSymptomType_flag, set_duplicateSymptomType_flag] = useState(false);
+    const [isOpenAddNewSymptom_dialog, set_isOpenAddNewSymptom_dialog] = useState(false);
     const [isOpenSaveNewSymptoms_dialog, set_isOpenSaveNewSymptoms_dialog] = useState(false);
-    //const [symptomTypes, setSymptomTypes] = useState(null);
+    const [symptomTypes, setSymptomTypes] = useState(null);
+    const [oldSymptoms, setOldSymptoms] = useState([]);
     const [newSymptoms, setNewSymptoms] = useState([]);
-    const [addNewSymptomType_inputValue, set_addNewSymptomType_inputValue] = useState('');
+    const [addNewSymptomInputValue, setAddNewSymptomInputValue] = useState('');
     const [confirmedSaveNewSymptoms, setConfirmedSaveNewSymptoms] = useState(false);
     const prevSaveNewSymptoms = usePrevious(props.saveNewSymptoms);
     let db = useContext(DatabaseContext);
@@ -32,15 +32,13 @@ export default function Home(props) {
     let errorDialog = useContext(SystemServiceContext).errorDialog;
 
 
-    function open_addNewSymptomType_dialog() {
-        set_isOpenAddNewSymptomType_dialog(true);
+    function open_addNewSymptom_dialog() {
+        set_isOpenAddNewSymptom_dialog(true);
     }
 
-    function close_addNewSymptomType_dialog() {
-        if(duplicateSymptomType_flag)
-            set_duplicateSymptomType_flag(false);
-        set_isOpenAddNewSymptomType_dialog(false);
-        set_addNewSymptomType_inputValue('');
+    function close_addNewSymptom_dialog() {
+        set_isOpenAddNewSymptom_dialog(false);
+        setAddNewSymptomInputValue('');
     }
 
     function close_saveNewSymptoms_dialog() {
@@ -55,32 +53,40 @@ export default function Home(props) {
         setConfirmedSaveNewSymptoms(true);
     }
 
-    function addNewSymptomType() {
-        const trimmedNewSymptomTypeName = addNewSymptomType_inputValue.trim();
+    function addNewSymptomType(typeName) {
         let objectStore = db.transaction(['symptom_types'], 'readwrite').objectStore('symptom_types');
-        let request = objectStore.add({name: trimmedNewSymptomTypeName});
+        let request = objectStore.add({name: typeName});
         request.onsuccess = function (event) {
-            //setSymptomTypes([...symptomTypes, trimmedNewSymptomTypeName]);
-            setNewSymptoms( [
-                    ...newSymptoms,
-                    {
-                        tempID: 'temp'+newSymptoms.length,
-                        typeName: trimmedNewSymptomTypeName,
-                        isNull: false,
-                        severity: 1
-                    }
-                ]
-            );
-            close_addNewSymptomType_dialog();
-        };
-        request.onerror = function (event) {
-            if(event.target.error.name === 'ConstraintError') {
-                console.log('The symptom name is already existed');
-                set_duplicateSymptomType_flag(true);
+            setSymptomTypes([...symptomTypes, typeName]);
+            addNewSymptom();
+        }
+    }
+
+    function addNewSymptom() {
+        const trimmedNewSymptomName = addNewSymptomInputValue.trim();
+        let objectStore = db.transaction(['symptom_types']).objectStore('symptom_types');
+        objectStore.openCursor().onsuccess = function(event) {
+            let cursor = event.target.result;
+            if(cursor) {
+                if (trimmedNewSymptomName === cursor.value.name) {
+                    setNewSymptoms( [
+                            ...newSymptoms,
+                            {
+                                tempID: 'temp'+newSymptoms.length,
+                                typeName: trimmedNewSymptomName,
+                                isNull: false,
+                                severity: 1
+                            }
+                        ]
+                    );
+                } else {
+                    cursor.continue();
+                }
             } else {
-                console.log('Database Error: Unable to add symptom type.');
+                addNewSymptomType(trimmedNewSymptomName);
             }
         };
+        close_addNewSymptom_dialog();
     }
 
     function handle_isNull_changed(tempID, isNull) {
@@ -105,7 +111,7 @@ export default function Home(props) {
         );
     }
 
-    /** Get symptom types from DB when mounted, and then create a new symptom for each type */
+    /** Get symptom types and then Get saved symptoms (current date only) from DB when mounted */
     useEffect(()=>{
         /* Get symptom types */
         let symptom_types = [];
@@ -115,18 +121,56 @@ export default function Home(props) {
                 symptom_types.push(cursor.value.name);
                 cursor.continue();
             } else {
-                //setSymptomTypes(symptom_types);
+                setSymptomTypes(symptom_types);
 
+                /* Get saved symptoms (current date only) */
+                let objectStore = db.transaction('symptoms_pollutants_relation').objectStore('symptoms_pollutants_relation');
+                let index = objectStore.index('datetime');
+                let today = format(new Date(), 'yyyy-MM-dd');
+                let boundKeyRange = IDBKeyRange.bound(today+' 00:00', today+' 23:59');
+                let request = index.openCursor(boundKeyRange);
+                let oldSymptoms = [];
                 let newSymptoms = [];
-                symptom_types.forEach( (symptom_type) => {
-                    newSymptoms.push({
-                        tempID: 'temp'+newSymptoms.length,
-                        typeName: symptom_type,
-                        isNull: true,
-                        severity: 1
-                    })
-                });
-                setNewSymptoms(newSymptoms);
+                request.onsuccess = (event) => {
+                    let cursor = event.target.result;
+                    if(cursor) {
+                        oldSymptoms.push({
+                            id: cursor.value.id,
+                            datetime: cursor.value.datetime,
+                            typeName: cursor.value.typeName,
+                            severity: cursor.value.severity
+                        });
+                        cursor.continue();
+                    } else { // after retrieving all the records
+                        if(oldSymptoms.length>0)
+                            setOldSymptoms(oldSymptoms);
+                        symptom_types.forEach((symptom_type) => {
+                            let noMatch_flag = true;
+                            oldSymptoms.every((oldSymptom) => {
+                                if(oldSymptom.typeName === symptom_type) {
+                                    noMatch_flag = false;
+                                    return false;
+                                } else {
+                                    return true;
+                                }
+                            });
+                            if(noMatch_flag) {
+                                newSymptoms.push({
+                                    tempID: 'temp'+newSymptoms.length,
+                                    typeName: symptom_type,
+                                    isNull: true,
+                                    severity: 1
+                                })
+                            }
+                        });
+                        if(newSymptoms.length>0)
+                            setNewSymptoms(newSymptoms);
+                    }
+                };
+                request.onerror = (event) => {
+                    console.log('Error on loading data from the database');
+                };
+
             }
         };
     },[]);
@@ -221,8 +265,20 @@ export default function Home(props) {
                     console.log('Error in downloading pollutant info: ', errorTextStatus);
                 })
                 .then((value) => {
-                    /* After the new symptoms insertion is successfully done, empty the new symptom list */
+                    /* After the new symptoms insertion is successfully done, refresh the old & new symptom list */
+                    let newSymptoms_toBeAddedTo_oldSymptoms = [];
+                    newSymptoms.forEach((newSymptom) => {
+                        if(newSymptom.id) { // having an 'id' value means it's added to the DB successfully
+                            newSymptoms_toBeAddedTo_oldSymptoms.push({
+                                id: newSymptom.id,
+                                datetime: newSymptom.datetime,
+                                typeName: newSymptom.typeName,
+                                severity: newSymptom.severity
+                            });
+                        }
+                    });
                     setNewSymptoms([]);
+                    setOldSymptoms([...oldSymptoms, ...newSymptoms_toBeAddedTo_oldSymptoms]);
                 }, (failedReason) => {
                     errorDialog.setErrorMsg(null, failedReason);
                     console.log(failedReason);
@@ -231,7 +287,6 @@ export default function Home(props) {
                     loader.loaderSwitch('off');
                     setConfirmedSaveNewSymptoms(false);
                     props.setSaveNewSymptoms(false);
-                    // todo redirect to the chart page with data
                 });
             } else {
                 props.setSaveNewSymptoms(false);
@@ -240,7 +295,20 @@ export default function Home(props) {
     },[confirmedSaveNewSymptoms]);
 
     /** Prepare for rendering */
-    const symptomCards = newSymptoms.slice().reverse().map((symptom)=>{  // slice is used here to clone an array
+    const symptoms = [...newSymptoms.slice().reverse(), ...oldSymptoms.slice().reverse()]; // slice is used here to clone an array
+    const symptomCards = symptoms.map((symptom)=>{
+        if(symptom.id) {
+            /* Return a card for old symptoms */
+            return (
+                <SymptomCard
+                    key={symptom.id}
+                    id={symptom.id}
+                    datetime={symptom.datetime}
+                    name={symptom.typeName}
+                    severity={symptom.severity}
+                />
+            );
+        } else {
             /* Return a card for new symptoms */
             return (
                 <SymptomCard
@@ -253,6 +321,7 @@ export default function Home(props) {
                     onSeverityChange={handle_severity_changed}
                 />
             );
+        }
     });
 
     return (
@@ -261,7 +330,7 @@ export default function Home(props) {
                 <TodayIcon color="primary" style={{verticalAlign:'text-bottom'}} /> &nbsp; {format(new Date(), 'dd MMMM yyyy')}
             </p>
             <div>
-                <div onClick={open_addNewSymptomType_dialog} style={{marginTop:'40px', cursor:'pointer'}}>
+                <div onClick={open_addNewSymptom_dialog} style={{marginTop:'40px', cursor:'pointer'}}>
                     <img src={plusIcon} width={24} height={24} style={{verticalAlign:'text-bottom'}} /> &nbsp;&nbsp;
                     <Typography variant='h6' style={{display:'inline-block'}}>Add New Symptom</Typography>
                 </div>
@@ -269,29 +338,34 @@ export default function Home(props) {
                 {symptomCards}
             </div>
 
-            {/* Add New Symptom Type Dialog */}
+            {/* Add SymptomCard Dialog */}
             <Dialog
-                open={isOpenAddNewSymptomType_dialog}
-                onClose={close_addNewSymptomType_dialog}
+                open={isOpenAddNewSymptom_dialog}
+                onClose={close_addNewSymptom_dialog}
             >
                 <DialogTitle style={{textAlign:'center'}}>Add Symptom</DialogTitle>
                 <DialogContent>
-                    <TextField
-                        label="New Symptom Name"
-                        margin="normal"
-                        variant="outlined"
-                        value={addNewSymptomType_inputValue}
-                        onChange={ (event)=>{set_addNewSymptomType_inputValue(event.target.value)} }
-                        error = {duplicateSymptomType_flag}
-                        helperText={duplicateSymptomType_flag? 'The symptom name is already existed':''}
-                        style={{minWidth:'24ch'}}
+                    <Autocomplete
+                        freeSolo
+                        options={symptomTypes}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                label="SymptomCard Name"
+                                margin="normal"
+                                variant="outlined"
+                            />
+                        )}
+                        value={addNewSymptomInputValue}
+                        onInputChange={ (ev, value)=>{setAddNewSymptomInputValue(value)} }
+                        style={{minWidth:'20ch'}}
                     />
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={close_addNewSymptomType_dialog} color="primary">
+                    <Button onClick={close_addNewSymptom_dialog} color="primary">
                         Cancel
                     </Button>
-                    <Button onClick={addNewSymptomType} color="primary">
+                    <Button onClick={addNewSymptom} color="primary">
                         Add
                     </Button>
                 </DialogActions>
