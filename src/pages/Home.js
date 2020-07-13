@@ -5,7 +5,6 @@ import TodayIcon from '@material-ui/icons/Today';
 import format from 'date-fns/format';
 import plusIcon from '../img/plus.svg';
 import Button from '@material-ui/core/Button';
-import Autocomplete from "@material-ui/lab/Autocomplete";
 import TextField from "@material-ui/core/TextField";
 import Dialog from '@material-ui/core/Dialog';
 import DialogTitle from '@material-ui/core/DialogTitle';
@@ -20,7 +19,7 @@ import usePrevious from "../components/usePrevious";
 
 export default function Home(props) {
     const [isOpenAddNewSymptomType_dialog, set_isOpenAddNewSymptomType_dialog] = useState(false);
-    const [duplicateSymptomType_flag, set_duplicateSymptomType_flag] = useState(false);
+    const [newSymptomInputError_flag, set_newSymptomInputError_flag] = useState({hoisted:false, error:null});
     const [isOpenSaveNewSymptoms_dialog, set_isOpenSaveNewSymptoms_dialog] = useState(false);
     //const [symptomTypes, setSymptomTypes] = useState(null);
     const [newSymptoms, setNewSymptoms] = useState([]);
@@ -37,8 +36,8 @@ export default function Home(props) {
     }
 
     function close_addNewSymptomType_dialog() {
-        if(duplicateSymptomType_flag)
-            set_duplicateSymptomType_flag(false);
+        if(newSymptomInputError_flag.hoisted)
+            set_newSymptomInputError_flag({hoisted:false, error: null});
         set_isOpenAddNewSymptomType_dialog(false);
         set_addNewSymptomType_inputValue('');
     }
@@ -57,6 +56,10 @@ export default function Home(props) {
 
     function addNewSymptomType() {
         const trimmedNewSymptomTypeName = addNewSymptomType_inputValue.trim();
+        if(trimmedNewSymptomTypeName === '') {
+            set_newSymptomInputError_flag({hoisted: true, error: 'Name cannot be empty'});
+            return;
+        }
         let objectStore = db.transaction(['symptom_types'], 'readwrite').objectStore('symptom_types');
         let request = objectStore.add({name: trimmedNewSymptomTypeName});
         request.onsuccess = function (event) {
@@ -75,10 +78,10 @@ export default function Home(props) {
         };
         request.onerror = function (event) {
             if(event.target.error.name === 'ConstraintError') {
-                console.log('The symptom name is already existed');
-                set_duplicateSymptomType_flag(true);
+                console.log('Error : The symptom name is already existed');
+                set_newSymptomInputError_flag({hoisted:true, error:'The symptom name is already existed'});
             } else {
-                console.log('Database Error: Unable to add symptom type.');
+                console.log('Database Error : Unable to add symptom type.');
             }
         };
     }
@@ -282,8 +285,8 @@ export default function Home(props) {
                         variant="outlined"
                         value={addNewSymptomType_inputValue}
                         onChange={ (event)=>{set_addNewSymptomType_inputValue(event.target.value)} }
-                        error = {duplicateSymptomType_flag}
-                        helperText={duplicateSymptomType_flag? 'The symptom name is already existed':''}
+                        error = {newSymptomInputError_flag.hoisted}
+                        helperText={newSymptomInputError_flag.hoisted? newSymptomInputError_flag.error:''}
                         style={{minWidth:'24ch'}}
                     />
                 </DialogContent>
