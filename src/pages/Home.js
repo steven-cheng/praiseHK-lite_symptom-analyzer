@@ -1,4 +1,5 @@
 import React, {useState, useEffect, useRef, useContext} from 'react';
+import {Redirect} from "react-router-dom";
 import {DatabaseContext, SystemServiceContext} from '../App';
 import Typography from "@material-ui/core/Typography";
 import TodayIcon from '@material-ui/icons/Today';
@@ -18,6 +19,7 @@ import usePrevious from "../components/usePrevious";
 
 
 export default function Home(props) {
+    const [toURL, setToURL] = useState({path:null, state:null});
     const [isOpenAddNewSymptomType_dialog, set_isOpenAddNewSymptomType_dialog] = useState(false);
     const [newSymptomInputError_flag, set_newSymptomInputError_flag] = useState({hoisted:false, error:null});
     const [isOpenSaveNewSymptoms_dialog, set_isOpenSaveNewSymptoms_dialog] = useState(false);
@@ -25,11 +27,16 @@ export default function Home(props) {
     const [newSymptoms, setNewSymptoms] = useState([]);
     const [addNewSymptomType_inputValue, set_addNewSymptomType_inputValue] = useState('');
     const [confirmedSaveNewSymptoms, setConfirmedSaveNewSymptoms] = useState(false);
+    const [currentDateTime, setCurrentDateTime] = useState(getCurrentDateTime());
     const prevSaveNewSymptoms = usePrevious(props.saveNewSymptoms);
     let db = useContext(DatabaseContext);
     let loader = useContext(SystemServiceContext).loader;
     let errorDialog = useContext(SystemServiceContext).errorDialog;
 
+
+    function getCurrentDateTime() {
+        return format(new Date(), 'dd MMMM yyyy  HH:mm');
+    }
 
     function open_addNewSymptomType_dialog() {
         set_isOpenAddNewSymptomType_dialog(true);
@@ -148,11 +155,35 @@ export default function Home(props) {
         }
     },[props.saveNewSymptoms])
 
+    /** test only */
+    // useEffect(()=>{
+    //     let inputData = [
+    //         ['2020071515',114.174793, 22.323001, { "IO":"Outdoor" }, 0.087]
+    //     ];
+    //     let params = {
+    //         todo: "expo_cal",
+    //         //myid: 'praisehk-symanaly',
+    //         apikey: 'SgeP3H6gFKdq',
+    //         input_data: JSON.stringify(inputData)
+    //     }
+    //     $.ajax({
+    //         dataType: 'text',
+    //         url: ' https://praise-web.ust.hk/uwsgi/praise-ir-cal/',
+    //         data: params,
+    //         success: (data)=>{console.log('data :', data)},
+    //         error: (jqXHR, errorStatus)=>{console.log('failed :', errorStatus)}
+    //     })
+    // },[])
+
     /** Insert new symptoms into DB */
     useEffect( ()=>{
         if(confirmedSaveNewSymptoms) {
             if(newSymptoms.length >0) {
                 loader.loaderSwitch('on');
+
+                let savedSymptomsName = [];
+                let savedSymptomsNameNumberCount = [];
+                let taskFailed_flag = false;
 
                 let lngLat = {lng:null, lat:null};
                 let dateTime = new Date()
@@ -183,6 +214,7 @@ export default function Home(props) {
                 }, (error)=>{
                     errorDialog.setErrorMsg(null, 'Unable to get the position');
                     console.log('cannot get position');
+                    taskFailed_flag = true;
                 })
                 .then( (data) => {
                         return new Promise((resolve,reject) => {
@@ -204,7 +236,7 @@ export default function Home(props) {
                                                 NO2: data.NO2[0],
                                                 SO2: data.SO2[0],
                                                 O3: data.O3[0],
-                                                'PM2.5': data['PM2.5'][0],
+                                                PM2dot5: data['PM2.5'][0],
                                                 PM10: data.PM10[0]
                                             }
                                         };
@@ -212,6 +244,8 @@ export default function Home(props) {
                                         request.onsuccess = (event) => {
                                             newSymptom.id = event.target.result;
                                             newSymptom.datetime = dateTime_string;
+
+                                            savedSymptomsName.push(newSymptom.typeName);
                                         }
                                     }
                                 });
@@ -222,25 +256,65 @@ export default function Home(props) {
                 }, (jqXHR, errorTextStatus) => {
                     errorDialog.setErrorMsg(null, 'Error in downloading pollutant info: '+ errorTextStatus);
                     console.log('Error in downloading pollutant info: ', errorTextStatus);
+                    taskFailed_flag = true;
                 })
-                .then((value) => {
-                    /* After the new symptoms insertion is successfully done, empty the new symptom list */
-                    setNewSymptoms([]);
+                .then((value) => { // After the new symptoms insertion is successfully done
+                    const objectStore = db.transaction('symptoms_pollutants_relation').objectStore('symptoms_pollutants_relation');
+                    const index = objectStore.index('typeName');
+                    let countPromises = savedSymptomsName.map((typeName)=>{
+                                            let countRequest = index.count(typeName);
+                                            return new Promise((resolve, reject)=>{
+                                                countRequest.onsuccess = ()=>{
+                                                    resolve(countRequest.result);
+                                                };
+                                                countRequest.onerror = ()=>{
+                                                    reject();
+                                                };
+                                            });
+                                        });
+                    return Promise.all(countPromises);
                 }, (failedReason) => {
                     errorDialog.setErrorMsg(null, failedReason);
                     console.log(failedReason);
+                    taskFailed_flag = true;
+                })
+                .then((counts) => {
+                    savedSymptomsNameNumberCount = counts;
+                }, ()=>{
+                    console.log('Counting of the no. of the types in the database failed');
+                    errorDialog.setErrorMsg(null, 'Database counting operation failed');
+                    taskFailed_flag = true;
                 })
                 .finally(()=>{
                     loader.loaderSwitch('off');
                     setConfirmedSaveNewSymptoms(false);
                     props.setSaveNewSymptoms(false);
-                    // todo redirect to the chart page with data
+                    // redirect to the chart page with data
+                    if(!taskFailed_flag) {
+                        const symptom = savedSymptomsName[
+                                        savedSymptomsNameNumberCount.indexOf( Math.max(...savedSymptomsNameNumberCount) )
+                                    ];
+                        const endDate = new Date();
+                        setToURL({
+                            path: '/chart',
+                            state: {
+                                symptom:symptom,
+                                dateRange: {start: null, end: endDate}
+                            }
+                        });
+                    }
                 });
             } else {
                 props.setSaveNewSymptoms(false);
             }
         }
     },[confirmedSaveNewSymptoms]);
+
+    /** Set Current Date & Time and refresh it after some short time */
+    useEffect(()=>{
+        const id = setInterval(()=>{setCurrentDateTime(getCurrentDateTime())}, 30000);
+        return(()=>{clearInterval(id)});
+    },[]);
 
     /** Prepare for rendering */
     const symptomCards = newSymptoms.slice().reverse().map((symptom)=>{  // slice is used here to clone an array
@@ -258,18 +332,30 @@ export default function Home(props) {
             );
     });
 
+    /** Rendering */
+    if(toURL.path) {
+        return(
+            <Redirect to={{
+                    pathname: toURL.path,
+                    state: toURL.state? toURL.state:null
+                }}
+            />
+        )
+    }
+
     return (
         <div className='page'>
             <p style={{ marginTop:'20px' }}>
-                <TodayIcon color="primary" style={{verticalAlign:'text-bottom'}} /> &nbsp; {format(new Date(), 'dd MMMM yyyy')}
+                <TodayIcon color="primary" style={{verticalAlign:'text-bottom'}} /> &nbsp; {currentDateTime}
             </p>
             <div>
-                <div onClick={open_addNewSymptomType_dialog} style={{marginTop:'40px', cursor:'pointer'}}>
+                <br/>
+                {symptomCards}
+                <br/>
+                <div onClick={open_addNewSymptomType_dialog} style={{marginBottom:100, cursor:'pointer'}}>
                     <img src={plusIcon} width={24} height={24} style={{verticalAlign:'text-bottom'}} /> &nbsp;&nbsp;
                     <Typography variant='h6' style={{display:'inline-block'}}>Add New Symptom</Typography>
                 </div>
-                <br/>
-                {symptomCards}
             </div>
 
             {/* Add New Symptom Type Dialog */}

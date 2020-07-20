@@ -245,7 +245,7 @@ export default function Home(props) {
                                                 NO2: data.NO2[0],
                                                 SO2: data.SO2[0],
                                                 O3: data.O3[0],
-                                                'PM2.5': data['PM2.5'][0],
+                                                PM2dot5: data['PM2.5'][0],
                                                 PM10: data.PM10[0]
                                             }
                                         };

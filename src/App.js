@@ -1,5 +1,5 @@
 import React, {useState, useEffect, useRef} from 'react';
-import {Switch, Route, Redirect, useLocation} from "react-router-dom";
+import {Switch, Route, useLocation, useHistory} from "react-router-dom";
 import AppBar from "@material-ui/core/AppBar";
 import Logo from './img/logo.svg';
 import Typography from "@material-ui/core/Typography";
@@ -41,12 +41,13 @@ export default function App() {
   let UILockerRequireCount = useRef(0).current;
   let loaderRequireCount = useRef(0).current;
 
+  const history = useHistory();
+
   const [isUILockerOn, setIsUILockerOn] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorDialogState, setErrorDialogState] = useState({isOpen:false, title:null, contentText:null});
 
   const [db, setDB] = useState(null);
-  const [toPage, setToPage] = React.useState('');
 
   const [saveNewSymptoms, setSaveNewSymptoms] = useState(false);
 
@@ -107,8 +108,8 @@ export default function App() {
       let objectStore2 = db.createObjectStore("symptoms_pollutants_relation", {keyPath: 'id', autoIncrement: true});
       /* Create indices for "symptoms_pollutants_relation" object store */
       objectStore2.createIndex("datetime", 'datetime', { unique: false });
-      objectStore2.createIndex("symptom_type_id", "symptom_type_id", { unique: false });
-
+      objectStore2.createIndex("typeName", "typeName", { unique: false });
+      objectStore2.createIndex('typeName,datetime,severity', ['typeName','datetime','severity'], {unique:false});
     };
     request.onsuccess = (event) => {
         setDB(event.target.result);
@@ -126,8 +127,6 @@ export default function App() {
     currentPath = '/home';
   if(!db) {
     return <></>;
-  } else if(toPage!=='' && toPage!==currentPath.substring(1)) {
-    return <Redirect to={'/'+toPage} />
   } else {
     return (
         <>
@@ -178,7 +177,7 @@ export default function App() {
                   <BottomNavigation
                       value={currentPath.substring(1)}
                       onChange={(event, newPage) => {
-                        setToPage(newPage);
+                        history.push('/' + newPage);
                       }}
                       showLabels
                       style={{ marginLeft:'auto', marginRight:'auto', maxWidth:'500px' }}
