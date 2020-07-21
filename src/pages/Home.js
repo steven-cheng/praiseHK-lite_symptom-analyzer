@@ -4,6 +4,7 @@ import {DatabaseContext, SystemServiceContext} from '../App';
 import Typography from "@material-ui/core/Typography";
 import TodayIcon from '@material-ui/icons/Today';
 import format from 'date-fns/format';
+import parse from 'date-fns/parse';
 import plusIcon from '../img/plus.svg';
 import Button from '@material-ui/core/Button';
 import TextField from "@material-ui/core/TextField";
@@ -183,6 +184,8 @@ export default function Home(props) {
 
                 let savedSymptomsName = [];
                 let savedSymptomsNameNumberCount = [];
+                let chosenSymptom;
+                let startDate;
                 let taskFailed_flag = false;
 
                 let lngLat = {lng:null, lat:null};
@@ -259,6 +262,11 @@ export default function Home(props) {
                     taskFailed_flag = true;
                 })
                 .then((value) => { // After the new symptoms insertion is successfully done
+                    /*
+                    *  Among the saved symptoms, count which one is saved most (in the history).
+                    *  This one will be used to plot the chart in Chart.js (the user will be redirected to that page
+                    *  immediately after save)
+                    */
                     const objectStore = db.transaction('symptoms_pollutants_relation').objectStore('symptoms_pollutants_relation');
                     const index = objectStore.index('typeName');
                     let countPromises = savedSymptomsName.map((typeName)=>{
@@ -278,11 +286,36 @@ export default function Home(props) {
                     console.log(failedReason);
                     taskFailed_flag = true;
                 })
-                .then((counts) => {
-                    savedSymptomsNameNumberCount = counts;
+                .then((counts) => { // retrieve the start recording date of the chosen symptom
+                    return new Promise((resolve,reject) => {
+                        chosenSymptom = savedSymptomsName[ counts.indexOf(Math.max(...counts)) ];
+                        const objectStore = db.transaction('symptoms_pollutants_relation').objectStore('symptoms_pollutants_relation');
+                        const index = objectStore.index('typeName,datetime,severity');
+                        const boundKeyRange = IDBKeyRange.bound(
+                            [chosenSymptom, '2000-01-01 00:00', Number.MIN_SAFE_INTEGER],
+                            [chosenSymptom, '9999-12-31 00:00', Number.MAX_SAFE_INTEGER]
+                        );
+                        const request = index.openCursor(boundKeyRange);
+                        request.onsuccess = (event)=>{
+                            let cursor = event.target.result;
+                            if(cursor) {
+                                resolve(cursor.value.datetime) // we just need the 1st record
+                            }
+                        };
+                        request.onerror = ()=> {
+                            reject();
+                        };
+                    });
                 }, ()=>{
                     console.log('Counting of the no. of the types in the database failed');
                     errorDialog.setErrorMsg(null, 'Database counting operation failed');
+                    taskFailed_flag = true;
+                })
+                .then((startDate_string)=>{
+                    startDate = parse(startDate_string, 'yyyy-MM-dd HH:mm', new Date());
+                }, ()=>{
+                    console.log('Starting date retrieval in the database failed');
+                    errorDialog.setErrorMsg(null, 'Database "starting date retrieval" operation failed');
                     taskFailed_flag = true;
                 })
                 .finally(()=>{
@@ -291,15 +324,11 @@ export default function Home(props) {
                     props.setSaveNewSymptoms(false);
                     // redirect to the chart page with data
                     if(!taskFailed_flag) {
-                        const symptom = savedSymptomsName[
-                                        savedSymptomsNameNumberCount.indexOf( Math.max(...savedSymptomsNameNumberCount) )
-                                    ];
-                        const endDate = new Date();
                         setToURL({
                             path: '/chart',
                             state: {
-                                symptom:symptom,
-                                dateRange: {start: null, end: endDate}
+                                symptom:chosenSymptom,
+                                dateRange: {start: startDate, end: new Date()}
                             }
                         });
                     }
