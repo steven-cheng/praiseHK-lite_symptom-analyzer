@@ -49,6 +49,7 @@ export default function App() {
 
   const [db, setDB] = useState(null);
 
+  const [symptomTypes, setSymptomTypes] = useState([]);
   const [saveNewSymptoms, setSaveNewSymptoms] = useState(false);
 
   function UILockerSwitch(onOff) {
@@ -96,7 +97,7 @@ export default function App() {
       /* Create indices for "symptoms_types" object store */
       objectStore1.createIndex("symptom_type_name", 'name', { unique: true });
       // Add default symptom type name to the object store
-      let default_symptom_types = ['Redness of eyes', 'Itchy eyes', 'Chest tightness', 'Shortness of breath', 'Phlegm','Wheezing'];
+      let default_symptom_types = ['Wheezing', 'Phlegm', 'Shortness of breath', 'Chest tightness', 'Itchy eyes', 'Redness of eyes'];
       objectStore1.transaction.oncomplete = (event) => {
         let objectStore = db.transaction('symptom_types', 'readwrite').objectStore('symptom_types');
         default_symptom_types.forEach( (symptomType) => {
@@ -119,98 +120,134 @@ export default function App() {
     };
   }, []);
 
+  /** Get the symptom types from the DB after initialized */
+  useEffect(()=>{
+    if(db) {
+      const objectStore = db.transaction('symptom_types').objectStore('symptom_types');
+      const request = objectStore.openCursor();
+      let symptom_types = [];
+      request.onsuccess = (event) => {
+        let cursor = event.target.result;
+        if(cursor) {
+          symptom_types.push(cursor.value.name);
+          cursor.continue();
+        } else {
+          setSymptomTypes(symptom_types);
+        }
+      };
+      request.onerror = () => {
+        console.log('Error: failed to get symptom types from the database');
+      };
 
+    }
+  },[db]);
+
+
+  /** Prepare for rendering */
   let currentPath = useLocation().pathname;
   if(currentPath === '/')
     currentPath += 'home';
   if(currentPath === '/android_asset/www/index.html') // specific for android only (when loaded for the 1st time)
     currentPath = '/home';
-  if(!db) {
-    return <></>;
-  } else {
-    return (
-        <>
-          <Loader isLoading={isLoading} />
-          <UILocker isLocked={isUILockerOn} />
-          <ErrorDialog
-              state={errorDialogState}
-              setState={setErrorDialogState}
-          />
 
-          <DatabaseContext.Provider value={db}>
-            <SystemServiceContext.Provider
-                value={{
-                  UILocker:{
-                    isUILockerOn: isUILockerOn,
-                    UILockerSwitch: UILockerSwitch,
-                    UILockerRequireCount: UILockerRequireCount
-                  },
-                  loader: {
-                    isLoading: isLoading,
-                    loaderSwitch: loaderSwitch,
-                    loaderRequireCount: loaderRequireCount
-                  },
-                  errorDialog: {
-                    setErrorMsg: setErrorMsg
-                  }
-                }}
-            >
-              <div className="App">
-                <AppBar color='inherit' position='sticky' style={{paddingTop:'10px', paddingBottom:'10px'}}>
-                  <div>
-                    <img src={Logo} width={89} height={52} />
-                  </div>
-                </AppBar>
-                <Container maxWidth='md' style={{ marginTop:'10px' }}>
-                  <Switch>
-                    <Route path='/settings' component={Settings} />
-                    <Route path='/chart' component={Chart} />
-                    <Route
-                        path='/'
-                        render={
-                          (props) => <Home {...props} saveNewSymptoms={saveNewSymptoms} setSaveNewSymptoms={setSaveNewSymptoms} />
-                        }
-                    />
-                  </Switch>
-                </Container>
-                <Container maxWidth={false} style={{ position:'fixed', bottom:0, backgroundColor:'white'}}>
-                  <BottomNavigation
-                      value={currentPath.substring(1)}
-                      onChange={(event, newPage) => {
-                        history.push('/' + newPage);
+  /** Rendering */
+  if(!db)
+    return <></>;
+  if(symptomTypes.length===0)
+    return <></>;
+  return (
+      <>
+        <Loader isLoading={isLoading} />
+        <UILocker isLocked={isUILockerOn} />
+        <ErrorDialog
+            state={errorDialogState}
+            setState={setErrorDialogState}
+        />
+
+        <DatabaseContext.Provider value={db}>
+          <SystemServiceContext.Provider
+              value={{
+                UILocker:{
+                  isUILockerOn: isUILockerOn,
+                  UILockerSwitch: UILockerSwitch,
+                  UILockerRequireCount: UILockerRequireCount
+                },
+                loader: {
+                  isLoading: isLoading,
+                  loaderSwitch: loaderSwitch,
+                  loaderRequireCount: loaderRequireCount
+                },
+                errorDialog: {
+                  setErrorMsg: setErrorMsg
+                }
+              }}
+          >
+            <div className="App">
+              <AppBar color='inherit' position='sticky' style={{paddingTop:'10px', paddingBottom:'10px'}}>
+                <div>
+                  <img src={Logo} width={89} height={52} />
+                </div>
+              </AppBar>
+              <Container maxWidth='md' style={{ marginTop:'10px' }}>
+                <Switch>
+                  <Route path='/settings' component={Settings} />
+                  <Route
+                      path='/chart'
+                      render={
+                        (props) => <Chart {...props} symptomTypes={symptomTypes}  />
+                      }
+                  />
+                  <Route
+                      path='/'
+                      render={
+                        (props) => <Home
+                                      {...props}
+                                      symptomTypes={symptomTypes}
+                                      setSymptomTypes={setSymptomTypes}
+                                      saveNewSymptoms={saveNewSymptoms}
+                                      setSaveNewSymptoms={setSaveNewSymptoms}
+                                  />
+                      }
+                  />
+                </Switch>
+              </Container>
+              <Container maxWidth={false} style={{ position:'fixed', bottom:0, backgroundColor:'white'}}>
+                <BottomNavigation
+                    value={currentPath.substring(1)}
+                    onChange={(event, newPage) => {
+                      history.push('/' + newPage);
+                    }}
+                    showLabels
+                    style={{ marginLeft:'auto', marginRight:'auto', maxWidth:'500px' }}
+                >
+                  <BottomNavigationAction value='chart' icon={<BarChartIcon />} />
+                  <BottomNavigationAction value='home' icon={<HomeIcon />} />
+                  <BottomNavigationAction value='settings' icon={<SettingsIcon />} />
+                </BottomNavigation>
+                {
+                  currentPath === '/home'
+                  &&
+                  <img
+                      src={saveButton}
+                      onClick={ ()=>{setSaveNewSymptoms(true)} }
+                      style={{
+                        position:'absolute',
+                        bottom:'15px',
+                        left: '50%',
+                        WebkitTransform: 'translateX(-50%)',
+                        transform: 'translateX(-50%)',
+                        width: '64px',
+                        height: '64px',
+                        cursor: 'pointer'
                       }}
-                      showLabels
-                      style={{ marginLeft:'auto', marginRight:'auto', maxWidth:'500px' }}
-                  >
-                    <BottomNavigationAction value='chart' icon={<BarChartIcon />} />
-                    <BottomNavigationAction value='home' icon={<HomeIcon />} />
-                    <BottomNavigationAction value='settings' icon={<SettingsIcon />} />
-                  </BottomNavigation>
-                  {
-                    currentPath === '/home'
-                    &&
-                    <img
-                        src={saveButton}
-                        onClick={ ()=>{setSaveNewSymptoms(true)} }
-                        style={{
-                          position:'absolute',
-                          bottom:'15px',
-                          left: '50%',
-                          WebkitTransform: 'translateX(-50%)',
-                          transform: 'translateX(-50%)',
-                          width: '64px',
-                          height: '64px',
-                          cursor: 'pointer'
-                        }}
-                    />
-                  }
-                </Container>
-              </div>
-            </SystemServiceContext.Provider>
-          </DatabaseContext.Provider>
-        </>
-    );
-  }
+                  />
+                }
+              </Container>
+            </div>
+          </SystemServiceContext.Provider>
+        </DatabaseContext.Provider>
+      </>
+  );
 
 }
 

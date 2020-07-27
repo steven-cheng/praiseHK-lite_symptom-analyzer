@@ -24,12 +24,14 @@ export default function Home(props) {
     const [isOpenAddNewSymptomType_dialog, set_isOpenAddNewSymptomType_dialog] = useState(false);
     const [newSymptomInputError_flag, set_newSymptomInputError_flag] = useState({hoisted:false, error:null});
     const [isOpenSaveNewSymptoms_dialog, set_isOpenSaveNewSymptoms_dialog] = useState(false);
-    //const [symptomTypes, setSymptomTypes] = useState(null);
+    const prevSymptomTypes = usePrevious(props.symptomTypes);
     const [newSymptoms, setNewSymptoms] = useState([]);
+    const prevNewSymptoms = usePrevious(newSymptoms);
     const [addNewSymptomType_inputValue, set_addNewSymptomType_inputValue] = useState('');
     const [confirmedSaveNewSymptoms, setConfirmedSaveNewSymptoms] = useState(false);
     const [currentDateTime, setCurrentDateTime] = useState(getCurrentDateTime());
     const prevSaveNewSymptoms = usePrevious(props.saveNewSymptoms);
+    const [deleteSymptomType, setDeleteSymptomType] = useState(null);
     let db = useContext(DatabaseContext);
     let loader = useContext(SystemServiceContext).loader;
     let errorDialog = useContext(SystemServiceContext).errorDialog;
@@ -71,17 +73,7 @@ export default function Home(props) {
         let objectStore = db.transaction(['symptom_types'], 'readwrite').objectStore('symptom_types');
         let request = objectStore.add({name: trimmedNewSymptomTypeName});
         request.onsuccess = function (event) {
-            //setSymptomTypes([...symptomTypes, trimmedNewSymptomTypeName]);
-            setNewSymptoms( [
-                    ...newSymptoms,
-                    {
-                        tempID: 'temp'+newSymptoms.length,
-                        typeName: trimmedNewSymptomTypeName,
-                        isNull: false,
-                        severity: 1
-                    }
-                ]
-            );
+            props.setSymptomTypes([...props.symptomTypes, trimmedNewSymptomTypeName]);
             close_addNewSymptomType_dialog();
         };
         request.onerror = function (event) {
@@ -116,31 +108,37 @@ export default function Home(props) {
         );
     }
 
-    /** Get symptom types from DB when mounted, and then create a new symptom for each type */
+    /** When mounted or updated, create a new symptom item for each type */
     useEffect(()=>{
-        /* Get symptom types */
-        let symptom_types = [];
-        db.transaction(['symptom_types']).objectStore('symptom_types').openCursor().onsuccess = (event)=> {
-            let cursor = event.target.result;
-            if(cursor) {
-                symptom_types.push(cursor.value.name);
-                cursor.continue();
-            } else {
-                //setSymptomTypes(symptom_types);
+        let newSymptoms = [];
+        for(let i=0; i<props.symptomTypes.length; i++) {
+            let symptomType = props.symptomTypes[i];
 
-                let newSymptoms = [];
-                symptom_types.forEach( (symptom_type) => {
-                    newSymptoms.push({
-                        tempID: 'temp'+newSymptoms.length,
-                        typeName: symptom_type,
-                        isNull: true,
-                        severity: 1
-                    })
+            /* default symptom value */
+            let newSymptom = {
+                tempID: 'temp_'+symptomType,
+                typeName: symptomType,
+                isNull: false,
+                severity: 1
+            };
+
+            /* Use the previous value if that type still existed at re-render */
+            if(prevNewSymptoms) {
+                prevNewSymptoms.every( (prevNewSymptom) => {
+                    if(prevNewSymptom.typeName === symptomType) {
+                        newSymptom = prevNewSymptom;
+                        return false;
+                    } else {
+                        return true;
+                    }
                 });
-                setNewSymptoms(newSymptoms);
             }
-        };
-    },[]);
+
+            newSymptoms.push(newSymptom);
+        }
+
+        setNewSymptoms(newSymptoms);
+    }, [props.symptomTypes])
 
 
     /** Show a confirmation dialog when 'save button is clicked */
@@ -184,7 +182,10 @@ export default function Home(props) {
 
                 let savedSymptomsName = [];
                 let savedSymptomsNameNumberCount = [];
+                let savedSymptomsSeverity = [];
+                let savedSymptomsPollutantsValue;
                 let chosenSymptom;
+                let chosenSymptomSeverity;
                 let startDate;
                 let taskFailed_flag = false;
 
@@ -226,6 +227,15 @@ export default function Home(props) {
                                 transaction.onerror = (event) => {reject('Error : Unable to insert new symptoms into the DB')};
                                 transaction.oncomplete = (event) => {resolve('All new symptoms are inserted into DB')};
                                 let objectStore = transaction.objectStore('symptoms_pollutants_relation');
+                                savedSymptomsPollutantsValue = {
+                                                                AQHI: data.AQHIBN[0],
+                                                                pctAR: data.AQHIER[0],
+                                                                NO2: data.NO2[0],
+                                                                SO2: data.SO2[0],
+                                                                O3: data.O3[0],
+                                                                PM2dot5: data['PM2.5'][0],
+                                                                PM10: data.PM10[0]
+                                                            };
                                 newSymptoms.forEach((newSymptom)=>{
                                     if(!newSymptom.isNull) {
                                         let newSymptom_forDB = {
@@ -233,15 +243,7 @@ export default function Home(props) {
                                             coordinates: lngLat,
                                             typeName: newSymptom.typeName,
                                             severity: newSymptom.severity,
-                                            pollutantsValue: {
-                                                AQHI: data.AQHIBN[0],
-                                                pctAR: data.AQHIER[0],
-                                                NO2: data.NO2[0],
-                                                SO2: data.SO2[0],
-                                                O3: data.O3[0],
-                                                PM2dot5: data['PM2.5'][0],
-                                                PM10: data.PM10[0]
-                                            }
+                                            pollutantsValue: savedSymptomsPollutantsValue
                                         };
                                         let request = objectStore.add(newSymptom_forDB);
                                         request.onsuccess = (event) => {
@@ -249,6 +251,7 @@ export default function Home(props) {
                                             newSymptom.datetime = dateTime_string;
 
                                             savedSymptomsName.push(newSymptom.typeName);
+                                            savedSymptomsSeverity.push(newSymptom.severity);
                                         }
                                     }
                                 });
@@ -288,7 +291,9 @@ export default function Home(props) {
                 })
                 .then((counts) => { // retrieve the start recording date of the chosen symptom
                     return new Promise((resolve,reject) => {
-                        chosenSymptom = savedSymptomsName[ counts.indexOf(Math.max(...counts)) ];
+                        const chosenSymptomIndex = counts.indexOf(Math.max(...counts));
+                        chosenSymptom = savedSymptomsName[chosenSymptomIndex];
+                        chosenSymptomSeverity = savedSymptomsSeverity[chosenSymptomIndex];
                         const objectStore = db.transaction('symptoms_pollutants_relation').objectStore('symptoms_pollutants_relation');
                         const index = objectStore.index('typeName,datetime,severity');
                         const boundKeyRange = IDBKeyRange.bound(
@@ -328,6 +333,9 @@ export default function Home(props) {
                             path: '/chart',
                             state: {
                                 symptom:chosenSymptom,
+                                highlightSymptom: true,
+                                highlightedSymptomCurrentSeverity: chosenSymptomSeverity,
+                                highlightedSymptomCurrentPollutantsValue: savedSymptomsPollutantsValue,
                                 dateRange: {start: startDate, end: new Date()}
                             }
                         });
@@ -345,8 +353,64 @@ export default function Home(props) {
         return(()=>{clearInterval(id)});
     },[]);
 
+    /** Scroll down to the bottom of the page after new symptom added (to enhance the user experience only) */
+    useEffect(()=>{
+        if(
+            prevNewSymptoms &&
+            prevNewSymptoms.length !== 0 &&
+            prevNewSymptoms.length < newSymptoms.length
+        ) {
+            window.scrollBy(0,document.body.scrollHeight);
+        }
+    }, [newSymptoms]);
+
+
+    /** Delete a type of symptom */
+    useEffect(()=>{
+        if(deleteSymptomType) {
+            const transaction1 = db.transaction(['symptoms_pollutants_relation'],'readwrite');
+            const objectStore1 = transaction1.objectStore('symptoms_pollutants_relation');
+            const index1 = objectStore1.index('typeName');
+            const request1 = index1.openKeyCursor(IDBKeyRange.only(deleteSymptomType));
+            request1.onsuccess = () => {
+                let cursor = request1.result;
+                if(cursor) {
+                    objectStore1.delete(cursor.primaryKey);
+                    cursor.continue();
+                }
+            }
+            transaction1.oncomplete = () => {
+                const transaction2 = db.transaction(['symptom_types'],'readwrite');
+                const objectStore2 = transaction2.objectStore('symptom_types');
+                const index2 = objectStore2.index('symptom_type_name');
+                const request2 = index2.openKeyCursor(IDBKeyRange.only(deleteSymptomType));
+                request2.onsuccess = () => {
+                    let cursor = request2.result;
+                    if(cursor) {
+                        objectStore2.delete(cursor.primaryKey);
+                        cursor.continue();
+                    } else { // When all are done for the database part
+                        props.setSymptomTypes(
+                            props.symptomTypes.filter((symptomType)=>{
+                                return (symptomType !== deleteSymptomType);
+                            })
+                        )
+                    }
+                }
+                request2.onerror = () => {
+                    console.log('Error occurred when deleting symptom type records in "symptom_types"');
+                }
+            }
+            transaction1.onerror = () => {
+                console.log('Error occurred when deleting symptom records in "symptoms_pollutants_relation"');
+            }
+
+            setDeleteSymptomType(null);
+        }
+    },[deleteSymptomType])
+
     /** Prepare for rendering */
-    const symptomCards = newSymptoms.slice().reverse().map((symptom)=>{  // slice is used here to clone an array
+    const symptomCards = newSymptoms.map((symptom)=>{
             /* Return a card for new symptoms */
             return (
                 <SymptomCard
@@ -357,6 +421,7 @@ export default function Home(props) {
                     onisNullChange={handle_isNull_changed}
                     severity={ symptom.severity? symptom.severity:null }
                     onSeverityChange={handle_severity_changed}
+                    deleteSymptomType={setDeleteSymptomType}
                 />
             );
     });
@@ -381,7 +446,7 @@ export default function Home(props) {
                 <br/>
                 {symptomCards}
                 <br/>
-                <div onClick={open_addNewSymptomType_dialog} style={{marginBottom:100, cursor:'pointer'}}>
+                <div id='addNewSymptom_div' onClick={open_addNewSymptomType_dialog} style={{marginBottom:100, cursor:'pointer'}}>
                     <img src={plusIcon} width={24} height={24} style={{verticalAlign:'text-bottom'}} /> &nbsp;&nbsp;
                     <Typography variant='h6' style={{display:'inline-block'}}>Add New Symptom</Typography>
                 </div>
