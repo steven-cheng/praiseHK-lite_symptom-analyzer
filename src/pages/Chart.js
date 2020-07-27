@@ -1,4 +1,5 @@
 import React, {useState, useEffect, useRef, useContext} from 'react';
+import usePrevious from "../components/usePrevious";
 import Typography from "@material-ui/core/Typography";
 import TextField from '@material-ui/core/TextField';
 import InputAdornment from "@material-ui/core/InputAdornment";
@@ -21,9 +22,12 @@ import {DatabaseContext} from "../App";
 import ChartJs from 'chart.js';
 import $ from 'jquery';
 import './Chart.css';
+import parse from 'date-fns/parse';
 
 
 export default function Chart(props) {
+    const db = useContext(DatabaseContext);
+
     /* Note: In this page, 'symptom' and 'symptomType' is interchangeable here */
     const [symptomType, setSymptomType] = useState(()=>{
         if(props.location.state && props.location.state.symptom)
@@ -32,6 +36,7 @@ export default function Chart(props) {
         // if no 'symptomType' value passed, use the first one in the symptomType types
         return props.symptomTypes[0];
     });
+    const prevSymptomType = usePrevious(symptomType);
     /* If the symptom needs to be highlighted, there will be info in it. Otherwise, 'symptomHighlight' value is null */
     const [symptomHighlight, setSymptomHighlight] = useState(()=>{
         if(props.location.state && props.location.state.highlightSymptom)
@@ -46,8 +51,23 @@ export default function Chart(props) {
         if(props.location.state && props.location.state.dateRange)
             return { start: props.location.state.dateRange.start, end: props.location.state.dateRange.end };
 
+        /*
+        *  If no dateRange is passed, start date will be set to null temporarily.
+        *  And will be set after obtaining value from the DB.
+        */
+        let objectStore = db.transaction('symptoms_pollutants_relation').objectStore('symptoms_pollutants_relation');
+        let index = objectStore.index('datetime');
+        let request = index.openCursor();
+        request.onsuccess = (event) => {
+            let cursor = event.target.result;
+            if(cursor) {
+                let startDate = parse(cursor.value.datetime, 'yyyy-MM-dd HH:mm', new Date());
+                setDateRange({ start: startDate, end: new Date() });
+            }
+        }
         return { start: null, end: new Date() };
     });
+    const prevDateRange = usePrevious(dateRange);
 
     // The following property is used by the date picker dialog to temporarily hold a start date value
     const [dateRange_startTemp, set_dateRange_startTemp] = useState(null);
@@ -56,8 +76,6 @@ export default function Chart(props) {
     const [date_inDialog, set_date_inDialog] = useState(dateRange.start);
     const [isOpenDatePickerDialog, setIsOpenDatePickerDialog] = useState(false);
     const [mountingChart, setMountingChart] = useState('mounting:start');
-
-    const db = useContext(DatabaseContext);
 
     const chartCanvasRef = useRef(null);
 
@@ -90,11 +108,21 @@ export default function Chart(props) {
     const changePollutant = (newPollutant) => {
         setPollutant(newPollutant);
     }
-    
+
     /** If the dependent value changes, start the mounting/re-mounting of the chart */
     useEffect(()=>{
-        if(mountingChart !== 'mounting:start')
+        if(mountingChart !== 'mounting:start') {
             setMountingChart('mounting:start');
+
+            /* If 'symptom highlight' is on, we turn it off immediately once another symptom or date is chosen */
+            if(
+                symptomType !== prevSymptomType ||
+                dateRange.start !== prevDateRange.start ||
+                dateRange.end !== prevDateRange.end
+            ) {
+                setSymptomHighlight(null);
+            }
+        }
     },[symptomType,dateRange,pollutant])
 
     /** Get data from the DB & then plot graph */
@@ -130,18 +158,23 @@ export default function Chart(props) {
             request.onsuccess = (event)=>{
                 let cursor = event.target.result;
                 if(cursor) {
-                    // todo delete the console.log later
-                    console.log('cursor.value : ', cursor.value);
                     let iIndex = cursor.value.severity-1;
                     let jIndex = Math.floor( cursor.value.pollutantsValue[pollutant] / concentrationIntervalSize[pollutant] );
                     data[iIndex][jIndex]++;
                     cursor.continue();
                 } else {
-                    // todo delete the console.log later
-                    //console.log('completed')
-                    //console.log('data :',data);
+                    /** After all data is retrieved from the DB */
+
+                    let dataForHighLighting;
+                    let symptomHighLight_indexes;
+                    if(symptomHighlight) {
+                        symptomHighLight_indexes = {
+                            i: symptomHighlight.currentSeverity -1,
+                            j: Math.floor( symptomHighlight.currentPollutantsValue[pollutant] / concentrationIntervalSize[pollutant] )
+                        }
+                    }
+
                     let dataForPlotting = [];
-                    let dataForHighLighting = [];
                     for(let i=0; i<data.length; i++) {
                         for(let j=0; j<noOfConcentrationIntervals; j++) {
                             let severity = i + 1;
@@ -153,9 +186,12 @@ export default function Chart(props) {
                             }
                             let radius = data[i][j];
                             dataForPlotting.push({ x:severity, y:concentration, r:radius });
+
+                            if(symptomHighLight_indexes && symptomHighLight_indexes.i===i && symptomHighLight_indexes.j===j) {
+                                dataForHighLighting = [ {x: severity, y: concentration, r: radius+6} ]
+                            }
                         }
                     }
-
 
 
                     const COLORS = {
@@ -180,22 +216,20 @@ export default function Chart(props) {
                             yAxisLabel = 'concentration (μgm³)';
                     }
 
-                    console.log(symptomHighlight)
-
+                    let datasets = [{
+                        data: dataForPlotting,
+                        backgroundColor: COLORS[pollutant]
+                    }];
+                    if(dataForPlotting.length!==0) {
+                        datasets.push({
+                            data: dataForHighLighting,
+                            backgroundColor: COLORS[pollutant].replace(",1)",",0.5)")
+                        })
+                    }
                     new ChartJs(chartCanvasRef.current, {
                         type: "bubble",
                         data: {
-                            datasets: [
-                                // {
-                                //     data: [{x:4, y:2, r:8}],
-                                //     backgroundColor: 'rgba(112,193,180,0.5)'
-                                // },
-                                {
-                                    label: "Correlation",
-                                    data: dataForPlotting,
-                                    backgroundColor: COLORS[pollutant]
-                                }
-                            ]
+                            datasets: datasets
                         },
                         options: {
                             legend: {
@@ -235,7 +269,6 @@ export default function Chart(props) {
         if($(window).scrollTop() > 0)
             $(window).scrollTop(0);
     },[]);
-
 
     /** Rendering */
     return (
