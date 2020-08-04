@@ -15,8 +15,9 @@ import DialogContentText from "@material-ui/core/DialogContentText";
 import DialogActions from '@material-ui/core/DialogActions';
 import SymptomCard from "../components/SymptomCard";
 import params_keys from "../utils/apiKeys";
-import $ from 'jquery';
 import usePrevious from "../components/usePrevious";
+import BusinessIcon from '@material-ui/icons/Business';
+import MicroEnvSelect_Dialog from "../components/MicroEnvSelect_Dialog";
 
 
 export default function Home(props) {
@@ -24,7 +25,7 @@ export default function Home(props) {
     const [isOpenAddNewSymptomType_dialog, set_isOpenAddNewSymptomType_dialog] = useState(false);
     const [newSymptomInputError_flag, set_newSymptomInputError_flag] = useState({hoisted:false, error:null});
     const [isOpenSaveNewSymptoms_dialog, set_isOpenSaveNewSymptoms_dialog] = useState(false);
-    const prevSymptomTypes = usePrevious(props.symptomTypes);
+    //const prevSymptomTypes = usePrevious(props.symptomTypes);
     const [newSymptoms, setNewSymptoms] = useState([]);
     const prevNewSymptoms = usePrevious(newSymptoms);
     const [addNewSymptomType_inputValue, set_addNewSymptomType_inputValue] = useState('');
@@ -32,10 +33,22 @@ export default function Home(props) {
     const [currentDateTime, setCurrentDateTime] = useState(getCurrentDateTime());
     const prevSaveNewSymptoms = usePrevious(props.saveNewSymptoms);
     const [deleteSymptomType, setDeleteSymptomType] = useState(null);
+    const [isOpenMicroEnvSelect_dialog, set_IsOpenMicroEnvSelect_dialog] = useState(false);
+    const microEnvStateRef = useRef({
+                            indoor: false,
+                            windowOpened: false,
+                            airPurifierOn: false,
+                            airConditionerOn: false
+                        });
+
     let db = useContext(DatabaseContext);
     let loader = useContext(SystemServiceContext).loader;
     let errorDialog = useContext(SystemServiceContext).errorDialog;
 
+
+    function setMicroEnvState(newMicroEnvState) {
+        microEnvStateRef.current = newMicroEnvState;
+    }
 
     function getCurrentDateTime() {
         return format(new Date(), 'dd MMMM yyyy  HH:mm');
@@ -57,6 +70,10 @@ export default function Home(props) {
         if(props.saveNewSymptoms) {
             props.setSaveNewSymptoms(false);
         }
+    }
+
+    function close_microEnvSelect_dialog() {
+        set_IsOpenMicroEnvSelect_dialog(false);
     }
 
     function userConfirmedSaveNewSymptoms() {
@@ -118,8 +135,8 @@ export default function Home(props) {
             let newSymptom = {
                 tempID: 'temp_'+symptomType,
                 typeName: symptomType,
-                isNull: false,
-                severity: 1
+                isNull: true,
+                severity: 3
             };
 
             /* Use the previous value if that type still existed at re-render */
@@ -154,26 +171,6 @@ export default function Home(props) {
         }
     },[props.saveNewSymptoms])
 
-    /** test only */
-    // useEffect(()=>{
-    //     let inputData = [
-    //         ['2020071515',114.174793, 22.323001, { "IO":"Outdoor" }, 0.087]
-    //     ];
-    //     let params = {
-    //         todo: "expo_cal",
-    //         //myid: 'praisehk-symanaly',
-    //         apikey: 'SgeP3H6gFKdq',
-    //         input_data: JSON.stringify(inputData)
-    //     }
-    //     $.ajax({
-    //         dataType: 'text',
-    //         url: ' https://praise-web.ust.hk/uwsgi/praise-ir-cal/',
-    //         data: params,
-    //         success: (data)=>{console.log('data :', data)},
-    //         error: (jqXHR, errorStatus)=>{console.log('failed :', errorStatus)}
-    //     })
-    // },[])
-
     /** Insert new symptoms into DB */
     useEffect( ()=>{
         if(confirmedSaveNewSymptoms) {
@@ -181,7 +178,7 @@ export default function Home(props) {
                 loader.loaderSwitch('on');
 
                 let savedSymptomsName = [];
-                let savedSymptomsNameNumberCount = [];
+                //let savedSymptomsNameNumberCount = [];
                 let savedSymptomsSeverity = [];
                 let savedSymptomsPollutantsValue;
                 let chosenSymptom;
@@ -190,7 +187,7 @@ export default function Home(props) {
                 let taskFailed_flag = false;
 
                 let lngLat = {lng:null, lat:null};
-                let dateTime = new Date()
+                let dateTime = new Date();
                 let dateTime_string = format(dateTime, 'yyyy-MM-dd HH:mm');
                 let dateTime_isoString  = dateTime.toISOString();
 
@@ -199,69 +196,113 @@ export default function Home(props) {
                     lngLat.lng = position.coords.longitude;
                     lngLat.lat = position.coords.latitude;
 
-                    let params = {
+                    let url_concentration = new URL('https://praise-web.ust.hk/uwsgi/praise-service/');
+                    let params_concentration = {
                         todo: "get_data",
                         lng: lngLat.lng.toString(),
                         lat: lngLat.lat.toString(),
                         t0:  dateTime_isoString,
                         t1:  dateTime_isoString,
-                        //pids: "PM10,PM2.5,NO2,O3,SO2,AQHIBN,AQHIER,AQHIPM10,AQHIPM25,AQHINO2,AQHIO3,AQHISO2",
                         pids: "PM10,PM2.5,NO2,O3,SO2,AQHIBN,AQHIER",
                         ...params_keys
                     };
+                    url_concentration.search = new URLSearchParams(params_concentration).toString();
 
-                    return $.when($.ajax({
-                                dataType: 'json',
-                                url: 'https://praise-web.ust.hk/uwsgi/praise-service/',
-                                data: params
-                            }));
+                    let url_IR = new URL('https://praise-web.ust.hk/uwsgi/praise-ir-cal/');
+                    let microEnvState = microEnvStateRef.current;
+                    let inputData ={ "IO": microEnvState.indoor? 'Other Indoor':'Outdoor' };
+                    if(microEnvState.indoor) {
+                        inputData = {
+                            ...inputData,
+                            "MicEnv": [
+                                {"Factor":"Window", "Option": microEnvState.windowOpened? 'OPEN':'CLOSE'},
+                                {"Factor":"Air Conditioner", "Option": microEnvState.airConditionerOn? 'ON':'OFF'},
+                                {"Factor":"Air Purifier", "Option": microEnvState.airPurifierOn? 'ON':'OFF'}
+                            ]
+                        }
+                    }
+                    let params_IR = {
+                        todo: "ir_cal",
+                        apikey: 'SgeP3H6gFKdq',
+                        input_env: JSON.stringify(inputData)
+                    }
+                    url_IR.search = new URLSearchParams(params_IR).toString();
+
+                    return Promise.all([
+                        fetch(url_concentration).then(response=>response.json()),
+                        fetch(url_IR, {referrerPolicy:'origin'}).then(response=>response.json())
+                    ]);
                 }, (error)=>{
                     errorDialog.setErrorMsg(null, 'Unable to get the position');
                     console.log('cannot get position');
                     taskFailed_flag = true;
                 })
-                .then( (data) => {
-                        return new Promise((resolve,reject) => {
-                            if(data.status === 0) {
-                                let transaction = db.transaction(['symptoms_pollutants_relation'], 'readwrite');
-                                transaction.onerror = (event) => {reject('Error : Unable to insert new symptoms into the DB')};
-                                transaction.oncomplete = (event) => {resolve('All new symptoms are inserted into DB')};
-                                let objectStore = transaction.objectStore('symptoms_pollutants_relation');
-                                savedSymptomsPollutantsValue = {
-                                                                AQHI: data.AQHIBN[0],
-                                                                pctAR: data.AQHIER[0],
-                                                                NO2: data.NO2[0],
-                                                                SO2: data.SO2[0],
-                                                                O3: data.O3[0],
-                                                                PM2dot5: data['PM2.5'][0],
-                                                                PM10: data.PM10[0]
-                                                            };
-                                newSymptoms.forEach((newSymptom)=>{
-                                    if(!newSymptom.isNull) {
-                                        let newSymptom_forDB = {
-                                            datetime: dateTime_string,
-                                            coordinates: lngLat,
-                                            typeName: newSymptom.typeName,
-                                            severity: newSymptom.severity,
-                                            pollutantsValue: savedSymptomsPollutantsValue
-                                        };
-                                        let request = objectStore.add(newSymptom_forDB);
-                                        request.onsuccess = (event) => {
-                                            newSymptom.id = event.target.result;
-                                            newSymptom.datetime = dateTime_string;
-
-                                            savedSymptomsName.push(newSymptom.typeName);
-                                            savedSymptomsSeverity.push(newSymptom.severity);
-                                        }
-                                    }
-                                });
-                            } else {
-                                reject('Error in the pollutant info: Downloaded data not valid');
+                .then( ([data_con, data_IR]) => {
+                    return new Promise((resolve,reject) => {
+                        if(data_con.status === 0 && data_IR.status === 0) {
+                            const data_adjusted = {
+                                AQHI: data_con.AQHIBN[0],
+                                pctAR: null,
+                                NO2_con: data_IR.NO2_IR * data_con.NO2[0],
+                                SO2_con: data_IR.SO2_IR * data_con.SO2[0],
+                                O3_con: data_IR.O3_IR * data_con.O3[0],
+                                PM2dot5_con: data_IR['PM2.5_IR'] * data_con['PM2.5'][0],
+                                PM10_con: data_IR.PM10_IR * data_con.PM10[0],
                             }
-                        })
-                }, (jqXHR, errorTextStatus) => {
-                    errorDialog.setErrorMsg(null, 'Error in downloading pollutant info: '+ errorTextStatus);
-                    console.log('Error in downloading pollutant info: ', errorTextStatus);
+                            const beta = {
+                                NO2: 0.0004462559,
+                                SO2: 0.0001393235,
+                                O3: 0.0005116328,
+                                PM2dot5: 0.0002180567,
+                                PM10: 0.0002821751
+                            }
+                            const pctAR_PM10 = (Math.exp(beta.PM10*data_adjusted.PM10_con) - 1) * 100;
+                            const pctAR_PM2dot5 = (Math.exp(beta.PM2dot5*data_adjusted.PM2dot5_con) - 1) * 100;
+                            const pctAR_PM = pctAR_PM10>pctAR_PM2dot5 ? pctAR_PM10 : pctAR_PM2dot5;
+                            data_adjusted.pctAR = (Math.exp(beta.NO2*data_adjusted.NO2_con) - 1) * 100 +
+                                                (Math.exp(beta.SO2*data_adjusted.SO2_con) - 1) * 100 +
+                                                (Math.exp(beta.O3*data_adjusted.O3_con) - 1) * 100 +
+                                                pctAR_PM;
+
+                            let transaction = db.transaction(['symptoms_pollutants_relation'], 'readwrite');
+                            transaction.onerror = (event) => {reject('Error : Unable to insert new symptoms into the DB')};
+                            transaction.oncomplete = (event) => {resolve('All new symptoms are inserted into DB')};
+                            let objectStore = transaction.objectStore('symptoms_pollutants_relation');
+                            savedSymptomsPollutantsValue = {
+                                                            AQHI: data_adjusted.AQHI,
+                                                            pctAR: data_adjusted.pctAR,
+                                                            NO2: data_adjusted.NO2_con,
+                                                            SO2: data_adjusted.SO2_con,
+                                                            O3: data_adjusted.O3_con,
+                                                            PM2dot5: data_adjusted.PM2dot5_con,
+                                                            PM10: data_adjusted.PM10_con
+                                                        };
+                            newSymptoms.forEach((newSymptom)=>{
+                                if(!newSymptom.isNull) {
+                                    let newSymptom_forDB = {
+                                        datetime: dateTime_string,
+                                        coordinates: lngLat,
+                                        typeName: newSymptom.typeName,
+                                        severity: newSymptom.severity,
+                                        pollutantsValue: savedSymptomsPollutantsValue
+                                    };
+                                    let request = objectStore.add(newSymptom_forDB);
+                                    request.onsuccess = (event) => {
+                                        newSymptom.id = event.target.result;
+                                        newSymptom.datetime = dateTime_string;
+
+                                        savedSymptomsName.push(newSymptom.typeName);
+                                        savedSymptomsSeverity.push(newSymptom.severity);
+                                    }
+                                }
+                            });
+                        } else {
+                            reject('Error in the pollutant info: Downloaded data_con not valid');
+                        }
+                    })
+                }, (error) => {
+                    errorDialog.setErrorMsg(null, 'Error in downloading pollutant info: '+ error);
+                    console.log('Error in downloading pollutant info: ', error);
                     taskFailed_flag = true;
                 })
                 .then((value) => { // After the new symptoms insertion is successfully done
@@ -441,9 +482,13 @@ export default function Home(props) {
         <div className='page'>
             <p style={{ marginTop:'20px' }}>
                 <TodayIcon color="primary" style={{verticalAlign:'text-bottom'}} /> &nbsp; {currentDateTime}
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <span onClick={ ()=>{set_IsOpenMicroEnvSelect_dialog(true);} } style={{cursor:'pointer'}}>
+                    <BusinessIcon color="primary" style={{verticalAlign:'text-bottom'}} /> &nbsp; Attributes
+                </span>
             </p>
-            <div>
-                <br/>
+            <p style={{textAlign:'center'}}>Mong Kok, Kowloon</p>
+            <div style={{paddingTop:5}}>
                 {symptomCards}
                 <br/>
                 <div id='addNewSymptom_div' onClick={open_addNewSymptomType_dialog} style={{marginBottom:100, cursor:'pointer'}}>
@@ -499,6 +544,15 @@ export default function Home(props) {
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Micro Environment Selection Dialog */}
+            <MicroEnvSelect_Dialog
+                isOpen={isOpenMicroEnvSelect_dialog}
+                close={close_microEnvSelect_dialog}
+                microEnvState={microEnvStateRef.current}
+                setMicroEnvState={setMicroEnvState}
+            />
+
         </div>
     );
 }

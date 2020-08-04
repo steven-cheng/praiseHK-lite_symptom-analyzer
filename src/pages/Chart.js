@@ -164,7 +164,6 @@ export default function Chart(props) {
                     cursor.continue();
                 } else {
                     /** After all data is retrieved from the DB */
-
                     let dataForHighLighting;
                     let symptomHighLight_indexes;
                     if(symptomHighlight) {
@@ -205,9 +204,19 @@ export default function Chart(props) {
                     }
 
                     let yAxisLabel;
+                    let yTickConfig = {};
                     switch(pollutant) {
                         case "AQHI":
                             yAxisLabel = 'AQHI';
+                            yTickConfig = {
+                                min: 1,
+                                callback: function (value) {
+                                    if(parseInt(value) === 11) // The value of AQHI 10+ is 11
+                                        return value+'+';
+
+                                    return value;
+                                }
+                            }
                             break;
                         case 'pctAR':
                             yAxisLabel = '%AR';
@@ -226,12 +235,14 @@ export default function Chart(props) {
                             backgroundColor: COLORS[pollutant].replace(",1)",",0.5)")
                         })
                     }
+
                     new ChartJs(chartCanvasRef.current, {
                         type: "bubble",
                         data: {
                             datasets: datasets
                         },
                         options: {
+                            events: ['click'],
                             legend: {
                                 display: false
                             },
@@ -246,7 +257,8 @@ export default function Chart(props) {
                                     scaleLabel:{
                                         display: true,
                                         labelString: yAxisLabel
-                                    }
+                                    },
+                                    ticks: yTickConfig
                                 }],
                             }
                         }
@@ -326,23 +338,23 @@ export default function Chart(props) {
                     </ButtonGroup>
                 </div>
                 <p>Entry: {symptomType}</p>
-                <Card style={{maxWidth:250, marginLeft:'auto', marginRight:'auto'}}>
-                    <CardContent>
-                        <div style={{float:'left'}}>AQHI</div> <div style={{float:'right'}}>r<sup>2</sup>=0.2814</div>
-                        <Divider style={{clear:'both'}}/>
-                        <div style={{float:'left'}}>%AR</div> <div style={{float:'right'}}>r<sup>2</sup>=0.2814</div>
-                        <Divider style={{clear:'both'}}/>
-                        <div style={{float:'left'}}>O3</div> <div style={{float:'right'}}>r<sup>2</sup>=0.2814</div>
-                        <Divider style={{clear:'both'}}/>
-                        <div style={{float:'left'}}>NO2</div> <div style={{float:'right'}}>r<sup>2</sup>=0.2814</div>
-                        <Divider style={{clear:'both'}}/>
-                        <div style={{float:'left'}}>SO2</div> <div style={{float:'right'}}>r<sup>2</sup>=0.2814</div>
-                        <Divider style={{clear:'both'}}/>
-                        <div style={{float:'left'}}>PM10</div> <div style={{float:'right'}}>r<sup>2</sup>=0.2814</div>
-                        <Divider style={{clear:'both'}}/>
-                        <div style={{float:'left'}}>PM2.5</div> <div style={{float:'right'}}>r<sup>2</sup>=0.2814</div>
-                    </CardContent>
-                </Card>
+                {/*<Card style={{maxWidth:250, marginLeft:'auto', marginRight:'auto'}}>*/}
+                {/*    <CardContent>*/}
+                {/*        <div style={{float:'left'}}>AQHI</div> <div style={{float:'right'}}>r<sup>2</sup>=0.2814</div>*/}
+                {/*        <Divider style={{clear:'both'}}/>*/}
+                {/*        <div style={{float:'left'}}>%AR</div> <div style={{float:'right'}}>r<sup>2</sup>=0.2814</div>*/}
+                {/*        <Divider style={{clear:'both'}}/>*/}
+                {/*        <div style={{float:'left'}}>O3</div> <div style={{float:'right'}}>r<sup>2</sup>=0.2814</div>*/}
+                {/*        <Divider style={{clear:'both'}}/>*/}
+                {/*        <div style={{float:'left'}}>NO2</div> <div style={{float:'right'}}>r<sup>2</sup>=0.2814</div>*/}
+                {/*        <Divider style={{clear:'both'}}/>*/}
+                {/*        <div style={{float:'left'}}>SO2</div> <div style={{float:'right'}}>r<sup>2</sup>=0.2814</div>*/}
+                {/*        <Divider style={{clear:'both'}}/>*/}
+                {/*        <div style={{float:'left'}}>PM10</div> <div style={{float:'right'}}>r<sup>2</sup>=0.2814</div>*/}
+                {/*        <Divider style={{clear:'both'}}/>*/}
+                {/*        <div style={{float:'left'}}>PM2.5</div> <div style={{float:'right'}}>r<sup>2</sup>=0.2814</div>*/}
+                {/*    </CardContent>*/}
+                {/*</Card>*/}
                 <br/><br/>
                 <Typography variant='h6'>Health Advisory</Typography>
                 <Typography variant='body1' style={{textAlign:'left'}}>
