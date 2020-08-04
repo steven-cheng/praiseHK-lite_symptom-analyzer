@@ -8,7 +8,7 @@ INPUT1="dev"
 
 
 node adjustPackageJson.js --homepage $INPUT1
-node adjustAPIkey.js --files "src/utils/apiKeys.js" --platform $INPUT1  # The files parameter can handle multiple filenames
+node adjustAPIkey.js --files "src/utils/apiKeys_praise-service.js" "src/utils/apiKeys_praise-ir-cal.js" --platform $INPUT1  # The files parameter can handle multiple filenames
 node adjustRouterBasename.js --files "src/index.js" --platform $INPUT1
 node adjustHtaccess.js --platform $INPUT1
 

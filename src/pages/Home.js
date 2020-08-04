@@ -14,7 +14,8 @@ import DialogContent from '@material-ui/core/DialogContent';
 import DialogContentText from "@material-ui/core/DialogContentText";
 import DialogActions from '@material-ui/core/DialogActions';
 import SymptomCard from "../components/SymptomCard";
-import params_keys from "../utils/apiKeys";
+import params_keys_praise_service from "../utils/apiKeys_praise-service";
+import params_keys_praise_ir_cal from "../utils/apiKeys_praise-ir-cal";
 import usePrevious from "../components/usePrevious";
 import BusinessIcon from '@material-ui/icons/Business';
 import MicroEnvSelect_Dialog from "../components/MicroEnvSelect_Dialog";
@@ -204,7 +205,7 @@ export default function Home(props) {
                         t0:  dateTime_isoString,
                         t1:  dateTime_isoString,
                         pids: "PM10,PM2.5,NO2,O3,SO2,AQHIBN,AQHIER",
-                        ...params_keys
+                        ...params_keys_praise_service
                     };
                     url_concentration.search = new URLSearchParams(params_concentration).toString();
 
@@ -223,8 +224,8 @@ export default function Home(props) {
                     }
                     let params_IR = {
                         todo: "ir_cal",
-                        apikey: 'SgeP3H6gFKdq',
-                        input_env: JSON.stringify(inputData)
+                        input_env: JSON.stringify(inputData),
+                        ...params_keys_praise_ir_cal
                     }
                     url_IR.search = new URLSearchParams(params_IR).toString();
 
