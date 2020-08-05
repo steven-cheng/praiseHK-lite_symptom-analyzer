@@ -18,7 +18,7 @@ import Card from "@material-ui/core/Card";
 import CardContent from "@material-ui/core/CardContent";
 import Container from "@material-ui/core/Container";
 import format from 'date-fns/format';
-import {DatabaseContext} from "../App";
+import {DatabaseContext, SystemServiceContext} from "../App";
 import ChartJs from 'chart.js';
 import $ from 'jquery';
 import './Chart.css';
@@ -27,14 +27,15 @@ import parse from 'date-fns/parse';
 
 export default function Chart(props) {
     const db = useContext(DatabaseContext);
+    const errorDialog = useContext(SystemServiceContext).errorDialog;
 
     /* Note: In this page, 'symptom' and 'symptomType' is interchangeable here */
     const [symptomType, setSymptomType] = useState(()=>{
         if(props.location.state && props.location.state.symptom)
             return props.location.state.symptom;
 
-        // if no 'symptomType' value passed, use the first one in the symptomType types
-        return props.symptomTypes[0];
+        // if no 'symptomType' value passed, return null first. We will get the type from the DB (the one has most records) a bit later.
+        return null;
     });
     const prevSymptomType = usePrevious(symptomType);
     /* If the symptom needs to be highlighted, there will be info in it. Otherwise, 'symptomHighlight' value is null */
@@ -53,18 +54,8 @@ export default function Chart(props) {
 
         /*
         *  If no dateRange is passed, start date will be set to null temporarily.
-        *  And will be set after obtaining value from the DB.
+        *  And will be set after obtaining value from the DB a bit later.
         */
-        let objectStore = db.transaction('symptoms_pollutants_relation').objectStore('symptoms_pollutants_relation');
-        let index = objectStore.index('datetime');
-        let request = index.openCursor();
-        request.onsuccess = (event) => {
-            let cursor = event.target.result;
-            if(cursor) {
-                let startDate = parse(cursor.value.datetime, 'yyyy-MM-dd HH:mm', new Date());
-                setDateRange({ start: startDate, end: new Date() });
-            }
-        }
         return { start: null, end: new Date() };
     });
     const prevDateRange = usePrevious(dateRange);
@@ -75,7 +66,12 @@ export default function Chart(props) {
     const [pollutant, setPollutant] = useState('AQHI');
     const [date_inDialog, set_date_inDialog] = useState(dateRange.start);
     const [isOpenDatePickerDialog, setIsOpenDatePickerDialog] = useState(false);
-    const [mountingChart, setMountingChart] = useState('mounting:start');
+    const [mountingChart, setMountingChart] = useState(()=>{
+        if(symptomType && dateRange.start)
+            return 'mounting:started';
+
+        return null;
+    });
 
     const chartCanvasRef = useRef(null);
 
@@ -109,10 +105,67 @@ export default function Chart(props) {
         setPollutant(newPollutant);
     }
 
+
+    /** When switching to the chart page without using the 'save' method in the home page,
+     *  the initial symptom type and start date don't have values, we use the following routine to fill them up
+     **/
+    useEffect( ()=>{
+        if(!symptomType && !dateRange.start) {
+            (async ()=>{
+                const objectStore = db.transaction('symptoms_pollutants_relation').objectStore('symptoms_pollutants_relation');
+                const index1 = objectStore.index('typeName');
+                try {
+                    let counts = await Promise.all(
+                                            props.symptomTypes.map((symptomType)=>{
+                                                let countRequest = index1.count(symptomType);
+                                                return new Promise((resolve, reject)=>{
+                                                    countRequest.onsuccess = ()=>{
+                                                        resolve(countRequest.result);
+                                                    };
+                                                    countRequest.onerror = ()=>{
+                                                        reject();
+                                                    };
+                                                });
+                                            })
+                    )
+                    const chosenSymptomTypeIndex = counts.indexOf(Math.max(...counts));
+                    let chosenSymptomType = props.symptomTypes[chosenSymptomTypeIndex];
+                    const index2 = objectStore.index('typeName,datetime,severity');
+                    const startDate_string = await new Promise((resolve, reject)=>{
+                                                    const boundKeyRange = IDBKeyRange.bound(
+                                                        [chosenSymptomType, '2000-01-01 00:00', Number.MIN_SAFE_INTEGER],
+                                                        [chosenSymptomType, '9999-12-31 00:00', Number.MAX_SAFE_INTEGER]
+                                                    );
+                                                    const request = index2.openCursor(boundKeyRange);
+                                                    request.onsuccess = (event)=>{
+                                                        let cursor = event.target.result;
+                                                        if(cursor) {
+                                                            resolve(cursor.value.datetime) // we just need the 1st record
+                                                        }
+                                                    };
+                                                    request.onerror = ()=> {
+                                                        reject();
+                                                    };
+                    })
+                    const startDate = parse(startDate_string, 'yyyy-MM-dd HH:mm', new Date());
+                    setSymptomType(chosenSymptomType);
+                    setDateRange({start: startDate, end:dateRange.end});
+                } catch(error) {
+                    console.log('Starting date retrieval in the database failed');
+                    errorDialog.setErrorMsg(null, 'Database "starting date retrieval" operation failed');
+                }
+            })();
+        }
+    },[symptomType, dateRange])
+
     /** If the dependent value changes, start the mounting/re-mounting of the chart */
     useEffect(()=>{
-        if(mountingChart !== 'mounting:start') {
-            setMountingChart('mounting:start');
+        if(!symptomType || !dateRange.start) {
+            return;
+        }
+
+        if(mountingChart !== 'mounting:started') {
+            setMountingChart('mounting:started');
 
             /* If 'symptom highlight' is on, we turn it off immediately once another symptom or date is chosen */
             if(
@@ -127,8 +180,12 @@ export default function Chart(props) {
 
     /** Get data from the DB & then plot graph */
     useEffect(()=>{
-        if(mountingChart === 'mounting:start') {
-            setMountingChart('mounting:dismounted')
+        if(!symptomType || !dateRange.start) {
+            return;
+        }
+
+        if(mountingChart === 'mounting:started') {
+            setMountingChart('mounting:dismounted') // During 'mounting:started' state, the chart is dismounted in the 'rendering' section.
             return;
         }
 
@@ -282,7 +339,12 @@ export default function Chart(props) {
             $(window).scrollTop(0);
     },[]);
 
+
     /** Rendering */
+    if(!symptomType || !dateRange.start) {
+        return <></>;
+    }
+
     return (
         <div className='page'>
             <div style={{textAlign:'center', marginTop:'15px'}}>
@@ -315,7 +377,7 @@ export default function Chart(props) {
                 <div style={{display:'flex', justifyContent:'center', alignItems:'center'}}>
                     <div style={{flex:'none'}}>
                         {
-                            mountingChart==='mounting:start' ?
+                            mountingChart==='mounting:started' ?
                                 <div style={{width:300, height:400, maxWidth:300, maxHeight:400, marginRight:20}} /> :
                                 <canvas
                                     ref={chartCanvasRef}
