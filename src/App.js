@@ -13,6 +13,7 @@ import './App.css';
 import Home from './pages/Home'
 import Settings from "./pages/Settings";
 import Chart from "./pages/Chart";
+import ChartPoint_Details from "./pages/ChartPoint_Details";
 import saveButton from './img/save.svg';
 import CircularProgress from "@material-ui/core/CircularProgress";
 import grey from "@material-ui/core/colors/grey";
@@ -150,6 +151,14 @@ export default function App() {
   if(currentPath === '/android_asset/www/index.html') // specific for android only (when loaded for the 1st time)
     currentPath = '/home';
 
+  let containerBackgroundColor;
+  if(currentPath === '/chartPoint_details') {
+    containerBackgroundColor = '#e6efff';
+  } else {
+    containerBackgroundColor = 'initial';
+  }
+
+
   /** Rendering */
   if(!db)
     return <></>;
@@ -188,7 +197,7 @@ export default function App() {
                   <img src={Logo} width={89} height={52} />
                 </div>
               </AppBar>
-              <Container maxWidth='md' style={{ marginTop:'10px' }}>
+              <Container maxWidth='md' style={{ paddingTop:'10px', height:'100%', backgroundColor:containerBackgroundColor }}>
                 <Switch>
                   <Route path='/settings' component={Settings} />
                   <Route
@@ -197,6 +206,7 @@ export default function App() {
                         (props) => <Chart {...props} symptomTypes={symptomTypes}  />
                       }
                   />
+                  <Route path='/chartPoint_details' component={ChartPoint_Details} />
                   <Route
                       path='/'
                       render={

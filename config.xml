@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<widget id="hk.ust.ienv.praisehk_lite_symptom_analyzer" version="0.1.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+<widget id="hk.ust.ienv.praisehk_lite_symptom_analyzer" version="0.2.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
     <name>praisehk_lite_symptom_analyzer</name>
     <description>
         An application that analysis relationship between certain symptoms and pollutants.

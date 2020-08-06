@@ -23,11 +23,14 @@ import ChartJs from 'chart.js';
 import $ from 'jquery';
 import './Chart.css';
 import parse from 'date-fns/parse';
+import {Redirect} from "react-router-dom";
 
 
 export default function Chart(props) {
     const db = useContext(DatabaseContext);
     const errorDialog = useContext(SystemServiceContext).errorDialog;
+
+    const [toURL, setToURL] = useState({path:null});
 
     /* Note: In this page, 'symptom' and 'symptomType' is interchangeable here */
     const [symptomType, setSymptomType] = useState(()=>{
@@ -300,6 +303,20 @@ export default function Chart(props) {
                         },
                         options: {
                             events: ['click'],
+                            onClick: (event, activeElements) => {
+                                /* todo
+                                *   In practice, use dataForPlotting[activeElements._index] to access
+                                *   the corresponding value of that point
+                                */
+                                if(activeElements.length > 0)
+                                    setToURL({path: '/chartPoint_details'});
+                            },
+                            datasets: {
+                                bubble: { hoverRadius: 0, hitRadius: 10 }
+                            },
+                            tooltips: {
+                                enabled: false
+                            },
                             legend: {
                                 display: false
                             },
@@ -341,6 +358,12 @@ export default function Chart(props) {
 
 
     /** Rendering */
+    if(toURL.path) {
+        return(
+            <Redirect to={{ pathname: toURL.path }} />
+        )
+    }
+
     if(!symptomType || !dateRange.start) {
         return <></>;
     }

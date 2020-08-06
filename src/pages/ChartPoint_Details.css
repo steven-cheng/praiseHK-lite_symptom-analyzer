@@ -1,0 +1,19 @@
+.card-content-div {
+    text-align: left;
+    border-left: 5px solid cornflowerblue;
+    padding-left: 10px;
+}
+
+.typography-p {
+    margin-bottom: 5px;
+}
+
+.card {
+    border-radius: 25px;
+    max-width: 300px;
+}
+
+.icon-row {
+    text-align: right;
+    color: darkslateblue;
+}

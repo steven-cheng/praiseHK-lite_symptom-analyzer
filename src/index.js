@@ -22,19 +22,18 @@ document.addEventListener('deviceready', () => {
     });
 
     ReactDOM.render(
-        <div>
-            <StylesProvider injectFirst>
-                {/* RouterBasename:browser-dev <Router basename="/~praise/praiseHK-lite_symptom-analyzer/dev"> */}
-                {/* RouterBasename:browser-prod <Router basename="/~praise/praiseHK-lite_symptom-analyzer/prod"> */}
-                <Router> {/* RouterBasename:localDev_mobile */}
-                    <MuiPickersUtilsProvider utils={DateFnsUtils}>
-                        <ThemeProvider theme={theme}>
-                            <App />
-                        </ThemeProvider>
-                    </MuiPickersUtilsProvider>
-                </Router>
-            </StylesProvider>
-        </div>,
+        <StylesProvider injectFirst>
+            {/* RouterBasename:browser-dev <Router basename="/~praise/praiseHK-lite_symptom-analyzer/dev"> */}
+            {/* RouterBasename:browser-prod <Router basename="/~praise/praiseHK-lite_symptom-analyzer/prod"> */}
+            <Router> {/* RouterBasename:localDev_mobile */}
+                <MuiPickersUtilsProvider utils={DateFnsUtils}>
+                    <ThemeProvider theme={theme}>
+                        <App />
+                    </ThemeProvider>
+                </MuiPickersUtilsProvider>
+            </Router>
+        </StylesProvider>
+        ,
         document.getElementById('root')
     );
 }, false);
