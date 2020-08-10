@@ -137,7 +137,7 @@ export default function Home(props) {
                 tempID: 'temp_'+symptomType,
                 typeName: symptomType,
                 isNull: true,
-                severity: 3
+                severity: 1
             };
 
             /* Use the previous value if that type still existed at re-render */
