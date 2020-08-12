@@ -52,6 +52,8 @@ export default function App() {
 
   const [symptomTypes, setSymptomTypes] = useState([]);
   const [saveNewSymptoms, setSaveNewSymptoms] = useState(false);
+  const [isSaveButtonDisabled, setIsSaveButtonDisabled] = useState(true);
+
 
   function UILockerSwitch(onOff) {
     if(onOff === 'on') {
@@ -216,6 +218,8 @@ export default function App() {
                                       setSymptomTypes={setSymptomTypes}
                                       saveNewSymptoms={saveNewSymptoms}
                                       setSaveNewSymptoms={setSaveNewSymptoms}
+                                      isSaveButtonDisabled={isSaveButtonDisabled}
+                                      setIsSaveButtonDisabled={setIsSaveButtonDisabled}
                                   />
                       }
                   />
@@ -239,7 +243,12 @@ export default function App() {
                   &&
                   <img
                       src={saveButton}
-                      onClick={ ()=>{setSaveNewSymptoms(true)} }
+                      onClick={
+                        ()=>{
+                          if(!isSaveButtonDisabled)
+                            setSaveNewSymptoms(true)
+                        }
+                      }
                       style={{
                         position:'absolute',
                         bottom:'15px',
@@ -248,6 +257,7 @@ export default function App() {
                         transform: 'translateX(-50%)',
                         width: '64px',
                         height: '64px',
+                        filter: isSaveButtonDisabled? 'grayscale(75%)':'',
                         cursor: 'pointer'
                       }}
                   />

@@ -54,7 +54,7 @@
   "homepage-ios": ".",
   "homepage-browser-dev": "/~praise/praiseHK-lite_symptom-analyzer/dev",
   "homepage-browser-prod": "/~praise/praiseHK-lite_symptom-analyzer/prod",
-  "homepage": "/android_asset/www",
+  "homepage": ".",
   "displayName": "praisehk_lite_symptom_analyzer",
   "description": "An application that analysis relationship between certain symptoms and pollutants.",
   "main": "index.js",

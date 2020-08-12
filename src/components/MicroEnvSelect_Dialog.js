@@ -75,7 +75,7 @@ export default function MicroEnvSelect_Dialog(props) {
                 Micro Environment
             </DialogTitle>
             <DialogContent>
-                <Paper elevation={3} style={{minWidth:300, paddingTop:10}}>
+                <Paper elevation={3} style={{ minWidth:300, paddingTop:10, paddingBottom:10 }}>
                     <div style={{...switchContainer_style, justifyContent:'center'}} >
                         <div style={{flex:'none'}}>
                             <ButtonGroup color="primary">
@@ -94,40 +94,42 @@ export default function MicroEnvSelect_Dialog(props) {
                             </ButtonGroup>
                         </div>
                     </div>
-                    <div style={switchContainer_style} >
-                        <p style={switchLabel_style}>Open Window</p>
-                        <div style={{flex:'none'}}>
-                            <Switch
-                                disabled={!microEnvState.indoor}
-                                checked={microEnvState.windowOpened}
-                                onChange={handleSwitchChange}
-                                name="windowOpened"
-                                color='primary'
-                            />
+                    <div style={{ display: microEnvState.indoor? 'block':'none' }}>
+                        <div style={switchContainer_style} >
+                            <p style={switchLabel_style}>Open Window</p>
+                            <div style={{flex:'none'}}>
+                                <Switch
+                                    disabled={!microEnvState.indoor}
+                                    checked={microEnvState.windowOpened}
+                                    onChange={handleSwitchChange}
+                                    name="windowOpened"
+                                    color='primary'
+                                />
+                            </div>
                         </div>
-                    </div>
-                    <div style={switchContainer_style} >
-                        <p style={switchLabel_style}>Air Purifier</p>
-                        <div style={{flex:'none'}}>
-                            <Switch
-                                disabled={!microEnvState.indoor}
-                                checked={microEnvState.airPurifierOn}
-                                onChange={handleSwitchChange}
-                                name="airPurifierOn"
-                                color='primary'
-                            />
+                        <div style={switchContainer_style} >
+                            <p style={switchLabel_style}>Air Purifier</p>
+                            <div style={{flex:'none'}}>
+                                <Switch
+                                    disabled={!microEnvState.indoor}
+                                    checked={microEnvState.airPurifierOn}
+                                    onChange={handleSwitchChange}
+                                    name="airPurifierOn"
+                                    color='primary'
+                                />
+                            </div>
                         </div>
-                    </div>
-                    <div style={switchContainer_style} >
-                        <p style={switchLabel_style}>Air-conditioner</p>
-                        <div style={{flex:'none'}}>
-                            <Switch
-                                disabled={!microEnvState.indoor}
-                                checked={microEnvState.airConditionerOn}
-                                onChange={handleSwitchChange}
-                                name="airConditionerOn"
-                                color='primary'
-                            />
+                        <div style={switchContainer_style} >
+                            <p style={switchLabel_style}>Air-conditioner</p>
+                            <div style={{flex:'none'}}>
+                                <Switch
+                                    disabled={!microEnvState.indoor}
+                                    checked={microEnvState.airConditionerOn}
+                                    onChange={handleSwitchChange}
+                                    name="airConditionerOn"
+                                    color='primary'
+                                />
+                            </div>
                         </div>
                     </div>
                 </Paper>
@@ -136,7 +138,7 @@ export default function MicroEnvSelect_Dialog(props) {
                 <Button onClick={handleConfirmed} color="primary">
                     Confirm
                 </Button>
-                <Button onClick={props.close} color="primary" autoFocus>
+                <Button onClick={props.close} color="primary">
                     Cancel
                 </Button>
             </DialogActions>

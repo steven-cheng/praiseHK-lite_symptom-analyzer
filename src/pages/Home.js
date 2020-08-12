@@ -34,7 +34,7 @@ export default function Home(props) {
     const [currentDateTime, setCurrentDateTime] = useState(getCurrentDateTime());
     const prevSaveNewSymptoms = usePrevious(props.saveNewSymptoms);
     const [deleteSymptomType, setDeleteSymptomType] = useState(null);
-    const [isOpenMicroEnvSelect_dialog, set_IsOpenMicroEnvSelect_dialog] = useState(false);
+    const [isOpenMicroEnvSelect_dialog, set_IsOpenMicroEnvSelect_dialog] = useState(true);
     const microEnvStateRef = useRef({
                             indoor: false,
                             windowOpened: false,
@@ -45,6 +45,8 @@ export default function Home(props) {
     let db = useContext(DatabaseContext);
     let loader = useContext(SystemServiceContext).loader;
     let errorDialog = useContext(SystemServiceContext).errorDialog;
+
+    let areSymptomsAllNull;
 
 
     function setMicroEnvState(newMicroEnvState) {
@@ -451,9 +453,23 @@ export default function Home(props) {
         }
     },[deleteSymptomType])
 
+    /** Enable/disable the 'save' button based on the 'No Input' checkboxes  */
+    useEffect(()=>{
+        if(areSymptomsAllNull && !props.isSaveButtonDisabled) {
+            props.setIsSaveButtonDisabled(true);
+        }
+        if(!areSymptomsAllNull && props.isSaveButtonDisabled) {
+            props.setIsSaveButtonDisabled(false);
+        }
+    })
+
+
     /** Prepare for rendering */
+    areSymptomsAllNull = true;
     const symptomCards = newSymptoms.map((symptom)=>{
             /* Return a card for new symptoms */
+            if(!symptom.isNull && areSymptomsAllNull)
+                areSymptomsAllNull = false;
             return (
                 <SymptomCard
                     key={symptom.tempID}
@@ -467,6 +483,7 @@ export default function Home(props) {
                 />
             );
     });
+
 
     /** Rendering */
     if(toURL.path) {

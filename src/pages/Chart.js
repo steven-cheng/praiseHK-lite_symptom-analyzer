@@ -270,9 +270,10 @@ export default function Chart(props) {
                             yAxisLabel = 'AQHI';
                             yTickConfig = {
                                 min: 1,
+                                max: 11, // The value of AQHI 10+ is 11
                                 callback: function (value) {
-                                    if(parseInt(value) === 11) // The value of AQHI 10+ is 11
-                                        return value+'+';
+                                    if(parseInt(value) === 11)
+                                        return '10+';
 
                                     return value;
                                 }
